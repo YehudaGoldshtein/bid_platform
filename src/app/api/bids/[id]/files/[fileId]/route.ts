@@ -40,17 +40,14 @@ export async function GET(
 
     const contentType = contentTypeMap[extension] || 'application/octet-stream';
 
-    // Handle blob data - use Response with Blob for binary data
+    // Handle blob data - copy to fresh ArrayBuffer to avoid SharedArrayBuffer issues
     const data = file.data as ArrayBuffer | Buffer;
-    let bytes: Uint8Array;
-    if (data instanceof ArrayBuffer) {
-      bytes = new Uint8Array(data);
-    } else {
-      bytes = new Uint8Array(data);
-    }
-    const blob = new Blob([bytes], { type: contentType });
+    const sourceBytes = new Uint8Array(data instanceof ArrayBuffer ? data : (data as Buffer));
+    const freshBuffer = new ArrayBuffer(sourceBytes.length);
+    const destBytes = new Uint8Array(freshBuffer);
+    destBytes.set(sourceBytes);
 
-    return new Response(blob, {
+    return new Response(freshBuffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,
