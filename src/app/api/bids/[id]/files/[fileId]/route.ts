@@ -42,8 +42,13 @@ export async function GET(
 
     // Handle blob data - use Response with Blob for binary data
     const data = file.data as ArrayBuffer | Buffer;
-    const arrayBuffer = data instanceof ArrayBuffer ? data : (data as Buffer).buffer.slice((data as Buffer).byteOffset, (data as Buffer).byteOffset + (data as Buffer).byteLength);
-    const blob = new Blob([arrayBuffer], { type: contentType });
+    let bytes: Uint8Array;
+    if (data instanceof ArrayBuffer) {
+      bytes = new Uint8Array(data);
+    } else {
+      bytes = new Uint8Array(data);
+    }
+    const blob = new Blob([bytes], { type: contentType });
 
     return new Response(blob, {
       status: 200,
