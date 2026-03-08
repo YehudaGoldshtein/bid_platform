@@ -1,25 +1,31 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import db from '@/lib/db';
+import { db, dbReady } from '@/lib/db';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await dbReady;
+
     const { id } = await params;
 
-    const bid = db.prepare('SELECT * FROM bids WHERE id = ?').get(id);
+    const bidResult = await db.execute({
+      sql: 'SELECT * FROM bids WHERE id = ?',
+      args: [id],
+    });
 
-    if (!bid) {
+    if (bidResult.rows.length === 0) {
       return NextResponse.json({ error: 'Bid not found' }, { status: 404 });
     }
 
-    const files = db
-      .prepare('SELECT id, filename FROM bid_files WHERE bid_id = ?')
-      .all(id) as any[];
+    const filesResult = await db.execute({
+      sql: 'SELECT id, filename FROM bid_files WHERE bid_id = ?',
+      args: [id],
+    });
 
-    return NextResponse.json(files);
+    return NextResponse.json(filesResult.rows);
   } catch (error) {
     console.error('Error fetching files:', error);
     return NextResponse.json(
@@ -34,11 +40,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await dbReady;
+
     const { id } = await params;
 
-    const bid = db.prepare('SELECT * FROM bids WHERE id = ?').get(id);
+    const bidResult = await db.execute({
+      sql: 'SELECT * FROM bids WHERE id = ?',
+      args: [id],
+    });
 
-    if (!bid) {
+    if (bidResult.rows.length === 0) {
       return NextResponse.json({ error: 'Bid not found' }, { status: 404 });
     }
 
@@ -52,11 +63,8 @@ export async function POST(
       );
     }
 
-    const insertFile = db.prepare(
-      'INSERT INTO bid_files (id, bid_id, filename, data) VALUES (?, ?, ?, ?)'
-    );
-
-    const fileEntries: { id: string; filename: string; buffer: Buffer }[] = [];
+    const statements: { sql: string; args: (string | ArrayBuffer)[] }[] = [];
+    const fileEntries: { id: string; filename: string }[] = [];
 
     for (const file of files) {
       if (!(file instanceof File)) {
@@ -65,25 +73,20 @@ export async function POST(
 
       const fileId = crypto.randomUUID();
       const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
 
-      fileEntries.push({ id: fileId, filename: file.name, buffer });
+      statements.push({
+        sql: 'INSERT INTO bid_files (id, bid_id, filename, data) VALUES (?, ?, ?, ?)',
+        args: [fileId, id, file.name, arrayBuffer],
+      });
+
+      fileEntries.push({ id: fileId, filename: file.name });
     }
 
-    const insertTransaction = db.transaction(() => {
-      for (const entry of fileEntries) {
-        insertFile.run(entry.id, id, entry.filename, entry.buffer);
-      }
-    });
+    if (statements.length > 0) {
+      await db.batch(statements, 'write');
+    }
 
-    insertTransaction();
-
-    const result = fileEntries.map((entry) => ({
-      id: entry.id,
-      filename: entry.filename,
-    }));
-
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(fileEntries, { status: 201 });
   } catch (error) {
     console.error('Error uploading files:', error);
     return NextResponse.json(

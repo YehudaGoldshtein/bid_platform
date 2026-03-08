@@ -1,17 +1,22 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import db from '@/lib/db';
+import { db, dbReady } from '@/lib/db';
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await dbReady;
+
     const { id } = await params;
 
-    const bid = db.prepare('SELECT * FROM bids WHERE id = ?').get(id);
+    const bidResult = await db.execute({
+      sql: 'SELECT * FROM bids WHERE id = ?',
+      args: [id],
+    });
 
-    if (!bid) {
+    if (bidResult.rows.length === 0) {
       return NextResponse.json({ error: 'Bid not found' }, { status: 404 });
     }
 
@@ -35,42 +40,37 @@ export async function POST(
     }
 
     const responseId = crypto.randomUUID();
+    const rulesJson = mode === 'additive' && rules ? JSON.stringify(rules) : null;
 
-    const insertResponse = db.prepare(
-      'INSERT INTO vendor_responses (id, bid_id, vendor_name, pricing_mode, base_price, rules) VALUES (?, ?, ?, ?, ?, ?)'
-    );
+    const statements: { sql: string; args: (string | number | null)[] }[] = [
+      {
+        sql: 'INSERT INTO vendor_responses (id, bid_id, vendor_name, pricing_mode, base_price, rules) VALUES (?, ?, ?, ?, ?, ?)',
+        args: [responseId, id, vendor_name, mode, mode === 'additive' ? base_price : null, rulesJson],
+      },
+    ];
 
-    const insertPrice = db.prepare(
-      'INSERT INTO vendor_prices (id, response_id, combination_key, price) VALUES (?, ?, ?, ?)'
-    );
+    for (const priceEntry of prices) {
+      const priceId = crypto.randomUUID();
+      statements.push({
+        sql: 'INSERT INTO vendor_prices (id, response_id, combination_key, price) VALUES (?, ?, ?, ?)',
+        args: [priceId, responseId, priceEntry.combination_key, priceEntry.price],
+      });
+    }
 
-    const transaction = db.transaction(() => {
-      const rulesJson = mode === 'additive' && rules ? JSON.stringify(rules) : null;
-      insertResponse.run(responseId, id, vendor_name, mode, mode === 'additive' ? base_price : null, rulesJson);
+    await db.batch(statements, 'write');
 
-      for (const priceEntry of prices) {
-        const priceId = crypto.randomUUID();
-        insertPrice.run(
-          priceId,
-          responseId,
-          priceEntry.combination_key,
-          priceEntry.price
-        );
-      }
+    const createdResponseResult = await db.execute({
+      sql: 'SELECT * FROM vendor_responses WHERE id = ?',
+      args: [responseId],
     });
 
-    transaction();
-
-    const createdResponse = db
-      .prepare('SELECT * FROM vendor_responses WHERE id = ?')
-      .get(responseId) as any;
-
-    const createdPrices = db
-      .prepare('SELECT * FROM vendor_prices WHERE response_id = ?')
-      .all(responseId) as any[];
+    const createdPricesResult = await db.execute({
+      sql: 'SELECT * FROM vendor_prices WHERE response_id = ?',
+      args: [responseId],
+    });
 
     return NextResponse.json(
-      { ...createdResponse, prices: createdPrices },
+      { ...createdResponseResult.rows[0], prices: createdPricesResult.rows },
       { status: 201 }
     );
   } catch (error) {

@@ -1,53 +1,71 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { db, dbReady } from '@/lib/db';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await dbReady;
+
     const { id } = await params;
 
-    const bid = db.prepare('SELECT * FROM bids WHERE id = ?').get(id) as any;
+    const bidResult = await db.execute({
+      sql: 'SELECT * FROM bids WHERE id = ?',
+      args: [id],
+    });
+    const bid = bidResult.rows[0];
 
     if (!bid) {
       return NextResponse.json({ error: 'Bid not found' }, { status: 404 });
     }
 
-    const parameters = db
-      .prepare('SELECT * FROM bid_parameters WHERE bid_id = ?')
-      .all(id) as any[];
-
-    const parametersWithOptions = parameters.map((param) => {
-      const options = db
-        .prepare('SELECT value FROM bid_parameter_options WHERE parameter_id = ? ORDER BY sort_order')
-        .all(param.id) as any[];
-      return { name: param.name, options: options.map((o: any) => o.value) };
+    const parametersResult = await db.execute({
+      sql: 'SELECT * FROM bid_parameters WHERE bid_id = ?',
+      args: [id],
     });
 
-    const files = db
-      .prepare('SELECT id, filename FROM bid_files WHERE bid_id = ?')
-      .all(id) as any[];
+    const parametersWithOptions = await Promise.all(
+      parametersResult.rows.map(async (param) => {
+        const optionsResult = await db.execute({
+          sql: 'SELECT value FROM bid_parameter_options WHERE parameter_id = ? ORDER BY sort_order',
+          args: [param.id as string],
+        });
+        return {
+          name: param.name,
+          options: optionsResult.rows.map((o) => o.value),
+        };
+      })
+    );
 
-    const vendorResponses = db
-      .prepare('SELECT * FROM vendor_responses WHERE bid_id = ?')
-      .all(id) as any[];
-
-    const responsesWithPrices = vendorResponses.map((response) => {
-      const prices = db
-        .prepare('SELECT * FROM vendor_prices WHERE response_id = ?')
-        .all(response.id) as any[];
-      return {
-        ...response,
-        rules: response.rules ? JSON.parse(response.rules) : [],
-        prices,
-      };
+    const filesResult = await db.execute({
+      sql: 'SELECT id, filename FROM bid_files WHERE bid_id = ?',
+      args: [id],
     });
+
+    const vendorResponsesResult = await db.execute({
+      sql: 'SELECT * FROM vendor_responses WHERE bid_id = ?',
+      args: [id],
+    });
+
+    const responsesWithPrices = await Promise.all(
+      vendorResponsesResult.rows.map(async (response) => {
+        const pricesResult = await db.execute({
+          sql: 'SELECT * FROM vendor_prices WHERE response_id = ?',
+          args: [response.id as string],
+        });
+        return {
+          ...response,
+          rules: response.rules ? JSON.parse(response.rules as string) : [],
+          prices: pricesResult.rows,
+        };
+      })
+    );
 
     return NextResponse.json({
       ...bid,
       parameters: parametersWithOptions,
-      files,
+      files: filesResult.rows,
       vendor_responses: responsesWithPrices,
     });
   } catch (error) {

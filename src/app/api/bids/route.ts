@@ -1,29 +1,46 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import db from '@/lib/db';
+import { db, dbReady } from '@/lib/db';
 
 export async function GET() {
   try {
-    const bids = db.prepare('SELECT * FROM bids').all() as any[];
+    await dbReady;
 
-    const result = bids.map((bid) => {
-      const parameters = db
-        .prepare('SELECT * FROM bid_parameters WHERE bid_id = ?')
-        .all(bid.id) as any[];
+    const bidsResult = await db.execute({ sql: 'SELECT * FROM bids', args: [] });
+    const bids = bidsResult.rows;
 
-      const parametersWithOptions = parameters.map((param) => {
-        const options = db
-          .prepare('SELECT value FROM bid_parameter_options WHERE parameter_id = ? ORDER BY sort_order')
-          .all(param.id) as any[];
-        return { name: param.name, options: options.map((o: any) => o.value) };
-      });
+    const result = await Promise.all(
+      bids.map(async (bid) => {
+        const parametersResult = await db.execute({
+          sql: 'SELECT * FROM bid_parameters WHERE bid_id = ?',
+          args: [bid.id as string],
+        });
 
-      const vendorResponseCount = (db
-        .prepare('SELECT COUNT(*) as count FROM vendor_responses WHERE bid_id = ?')
-        .get(bid.id) as any).count;
+        const parametersWithOptions = await Promise.all(
+          parametersResult.rows.map(async (param) => {
+            const optionsResult = await db.execute({
+              sql: 'SELECT value FROM bid_parameter_options WHERE parameter_id = ? ORDER BY sort_order',
+              args: [param.id as string],
+            });
+            return {
+              name: param.name,
+              options: optionsResult.rows.map((o) => o.value),
+            };
+          })
+        );
 
-      return { ...bid, parameters: parametersWithOptions, vendor_response_count: vendorResponseCount };
-    });
+        const countResult = await db.execute({
+          sql: 'SELECT COUNT(*) as count FROM vendor_responses WHERE bid_id = ?',
+          args: [bid.id as string],
+        });
+
+        return {
+          ...bid,
+          parameters: parametersWithOptions,
+          vendor_response_count: countResult.rows[0]?.count ?? 0,
+        };
+      })
+    );
 
     return NextResponse.json(result);
   } catch (error) {
@@ -37,6 +54,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await dbReady;
+
     const body = await request.json();
     const { title, description, deadline, parameters } = body;
 
@@ -49,41 +68,41 @@ export async function POST(request: Request) {
 
     const bidId = crypto.randomUUID();
 
-    const insertBid = db.prepare(
-      'INSERT INTO bids (id, title, description, deadline) VALUES (?, ?, ?, ?)'
-    );
+    const statements: { sql: string; args: (string | number | null)[] }[] = [
+      {
+        sql: 'INSERT INTO bids (id, title, description, deadline) VALUES (?, ?, ?, ?)',
+        args: [bidId, title, description, deadline],
+      },
+    ];
 
-    const insertParameter = db.prepare(
-      'INSERT INTO bid_parameters (id, bid_id, name) VALUES (?, ?, ?)'
-    );
+    if (parameters && Array.isArray(parameters)) {
+      for (const param of parameters) {
+        const paramId = crypto.randomUUID();
+        statements.push({
+          sql: 'INSERT INTO bid_parameters (id, bid_id, name) VALUES (?, ?, ?)',
+          args: [paramId, bidId, param.name],
+        });
 
-    const insertOption = db.prepare(
-      'INSERT INTO bid_parameter_options (id, parameter_id, value) VALUES (?, ?, ?)'
-    );
-
-    const transaction = db.transaction(() => {
-      insertBid.run(bidId, title, description, deadline);
-
-      if (parameters && Array.isArray(parameters)) {
-        for (const param of parameters) {
-          const paramId = crypto.randomUUID();
-          insertParameter.run(paramId, bidId, param.name);
-
-          if (param.options && Array.isArray(param.options)) {
-            for (const option of param.options) {
-              const optionId = crypto.randomUUID();
-              insertOption.run(optionId, paramId, option);
-            }
+        if (param.options && Array.isArray(param.options)) {
+          for (const option of param.options) {
+            const optionId = crypto.randomUUID();
+            statements.push({
+              sql: 'INSERT INTO bid_parameter_options (id, parameter_id, value) VALUES (?, ?, ?)',
+              args: [optionId, paramId, option],
+            });
           }
         }
       }
+    }
+
+    await db.batch(statements, 'write');
+
+    const createdBidResult = await db.execute({
+      sql: 'SELECT * FROM bids WHERE id = ?',
+      args: [bidId],
     });
 
-    transaction();
-
-    const createdBid = db.prepare('SELECT * FROM bids WHERE id = ?').get(bidId);
-
-    return NextResponse.json(createdBid, { status: 201 });
+    return NextResponse.json(createdBidResult.rows[0], { status: 201 });
   } catch (error) {
     console.error('Error creating bid:', error);
     return NextResponse.json(

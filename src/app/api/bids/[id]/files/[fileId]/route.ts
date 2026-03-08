@@ -1,22 +1,26 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { db, dbReady } from '@/lib/db';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string; fileId: string }> }
 ) {
   try {
+    await dbReady;
+
     const { id, fileId } = await params;
 
-    const file = db
-      .prepare('SELECT * FROM bid_files WHERE id = ? AND bid_id = ?')
-      .get(fileId, id) as any;
+    const fileResult = await db.execute({
+      sql: 'SELECT * FROM bid_files WHERE id = ? AND bid_id = ?',
+      args: [fileId, id],
+    });
+    const file = fileResult.rows[0];
 
     if (!file) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    const extension = file.filename.split('.').pop()?.toLowerCase() || '';
+    const extension = (file.filename as string).split('.').pop()?.toLowerCase() || '';
     const contentTypeMap: Record<string, string> = {
       pdf: 'application/pdf',
       png: 'image/png',
@@ -36,7 +40,11 @@ export async function GET(
 
     const contentType = contentTypeMap[extension] || 'application/octet-stream';
 
-    return new NextResponse(file.data, {
+    // Handle blob data - could be ArrayBuffer or Buffer
+    const data = file.data as ArrayBuffer | Buffer;
+    const buffer = data instanceof ArrayBuffer ? Buffer.from(data) : data;
+
+    return new NextResponse(buffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,
