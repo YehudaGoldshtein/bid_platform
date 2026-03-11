@@ -16,80 +16,65 @@ function getClient(): Client {
 async function initializeDatabase() {
   const client = getClient();
   try { await client.execute('PRAGMA foreign_keys = ON'); } catch {}
-  await client.batch([
-    {
-      sql: `CREATE TABLE IF NOT EXISTS projects (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        address TEXT,
-        type TEXT,
-        description TEXT,
-        status TEXT NOT NULL DEFAULT 'active',
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )`,
-      args: [],
-    },
-    {
-      sql: `CREATE TABLE IF NOT EXISTS bids (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        deadline TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'draft',
-        project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )`,
-      args: [],
-    },
-    {
-      sql: `CREATE TABLE IF NOT EXISTS bid_parameters (
-        id TEXT PRIMARY KEY,
-        bid_id TEXT NOT NULL REFERENCES bids(id) ON DELETE CASCADE,
-        name TEXT NOT NULL,
-        sort_order INTEGER NOT NULL DEFAULT 0
-      )`,
-      args: [],
-    },
-    {
-      sql: `CREATE TABLE IF NOT EXISTS bid_parameter_options (
-        id TEXT PRIMARY KEY,
-        parameter_id TEXT NOT NULL REFERENCES bid_parameters(id) ON DELETE CASCADE,
-        value TEXT NOT NULL,
-        sort_order INTEGER NOT NULL DEFAULT 0
-      )`,
-      args: [],
-    },
-    {
-      sql: `CREATE TABLE IF NOT EXISTS bid_files (
-        id TEXT PRIMARY KEY,
-        bid_id TEXT NOT NULL REFERENCES bids(id) ON DELETE CASCADE,
-        filename TEXT NOT NULL,
-        data BLOB NOT NULL
-      )`,
-      args: [],
-    },
-    {
-      sql: `CREATE TABLE IF NOT EXISTS vendor_responses (
-        id TEXT PRIMARY KEY,
-        bid_id TEXT NOT NULL REFERENCES bids(id) ON DELETE CASCADE,
-        vendor_name TEXT NOT NULL,
-        pricing_mode TEXT NOT NULL DEFAULT 'combination',
-        base_price REAL,
-        rules TEXT,
-        submitted_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )`,
-      args: [],
-    },
-    {
-      sql: `CREATE TABLE IF NOT EXISTS vendor_prices (
-        id TEXT PRIMARY KEY,
-        response_id TEXT NOT NULL REFERENCES vendor_responses(id) ON DELETE CASCADE,
-        combination_key TEXT NOT NULL,
-        price REAL NOT NULL
-      )`,
-      args: [],
-    },
-  ], 'write');
+
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      address TEXT,
+      type TEXT,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS bids (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      deadline TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft',
+      project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS bid_parameters (
+      id TEXT PRIMARY KEY,
+      bid_id TEXT NOT NULL REFERENCES bids(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    )`,
+    `CREATE TABLE IF NOT EXISTS bid_parameter_options (
+      id TEXT PRIMARY KEY,
+      parameter_id TEXT NOT NULL REFERENCES bid_parameters(id) ON DELETE CASCADE,
+      value TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    )`,
+    `CREATE TABLE IF NOT EXISTS bid_files (
+      id TEXT PRIMARY KEY,
+      bid_id TEXT NOT NULL REFERENCES bids(id) ON DELETE CASCADE,
+      filename TEXT NOT NULL,
+      data BLOB NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS vendor_responses (
+      id TEXT PRIMARY KEY,
+      bid_id TEXT NOT NULL REFERENCES bids(id) ON DELETE CASCADE,
+      vendor_name TEXT NOT NULL,
+      pricing_mode TEXT NOT NULL DEFAULT 'combination',
+      base_price REAL,
+      rules TEXT,
+      submitted_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS vendor_prices (
+      id TEXT PRIMARY KEY,
+      response_id TEXT NOT NULL REFERENCES vendor_responses(id) ON DELETE CASCADE,
+      combination_key TEXT NOT NULL,
+      price REAL NOT NULL
+    )`,
+  ];
+
+  // Run each CREATE TABLE individually to avoid batch failures on existing schemas
+  for (const sql of tables) {
+    try { await client.execute(sql); } catch {}
+  }
 
   // Migrations for existing databases
   try { await client.execute('ALTER TABLE bids ADD COLUMN status TEXT NOT NULL DEFAULT \'draft\''); } catch {}
