@@ -1,13 +1,21 @@
-import { createClient } from '@libsql/client';
+import { createClient, type Client } from '@libsql/client';
 
-const db = createClient({
-  url: process.env.TURSO_DATABASE_URL!,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+let _db: Client | null = null;
+let _dbReady: Promise<void> | null = null;
 
-// Initialize database schema
+function getClient(): Client {
+  if (!_db) {
+    _db = createClient({
+      url: process.env.TURSO_DATABASE_URL!,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+  }
+  return _db;
+}
+
 async function initializeDatabase() {
-  await db.batch([
+  const client = getClient();
+  await client.batch([
     {
       sql: `CREATE TABLE IF NOT EXISTS bids (
         id TEXT PRIMARY KEY,
@@ -69,7 +77,20 @@ async function initializeDatabase() {
   ], 'write');
 }
 
-// Initialize on first import
-const dbReady = initializeDatabase().catch(console.error);
+function ensureDbReady(): Promise<void> {
+  if (!_dbReady) {
+    _dbReady = initializeDatabase().catch(console.error) as Promise<void>;
+  }
+  return _dbReady;
+}
+
+// Lazy proxy: db is only created when first accessed at runtime, not at build time
+const db = new Proxy({} as Client, {
+  get(_target, prop) {
+    return getClient()[prop as keyof Client];
+  },
+});
+
+const dbReady = ensureDbReady;
 
 export { db, dbReady };

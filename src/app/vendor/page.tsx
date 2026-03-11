@@ -26,58 +26,102 @@ export default function VendorDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
+  const activeBids = bids.length;
+
   return (
-    <main className="min-h-screen py-10 px-4" style={{ background: 'var(--bg)' }}>
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <Link href="/" className="text-sm mb-1 inline-block transition-colors" style={{ color: 'var(--gold)' }}>&larr; Back to Home</Link>
-          <h1 className="text-3xl font-bold" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Vendor Portal</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>Browse available bids and submit your prices</p>
+    <div className="page on">
+      {/* KPI ROW */}
+      <div className="kpi-row">
+        <div className="kpi" style={{ "--kc": "var(--gold)" } as React.CSSProperties}>
+          <div className="kpi-lbl">Active Bids</div>
+          <div className="kpi-val">{loading ? "..." : activeBids}</div>
+          <div className="kpi-sub">Open for pricing</div>
         </div>
+        <div className="kpi" style={{ "--kc": "var(--green)" } as React.CSSProperties}>
+          <div className="kpi-lbl">Bids Won</div>
+          <div className="kpi-val">2</div>
+          <div className="kpi-sub win">{"\uD83C\uDFC6"} $224,000 awarded</div>
+        </div>
+        <div className="kpi" style={{ "--kc": "var(--blue)" } as React.CSSProperties}>
+          <div className="kpi-lbl">Pending Review</div>
+          <div className="kpi-val">5</div>
+          <div className="kpi-sub">Awaiting contractor decision</div>
+        </div>
+        <div className="kpi" style={{ "--kc": "var(--purple)" } as React.CSSProperties}>
+          <div className="kpi-lbl">New Invitations</div>
+          <div className="kpi-val">2</div>
+          <div className="kpi-sub" style={{ color: "var(--purple)", fontWeight: 700 }}>Reply by Mar 15</div>
+        </div>
+      </div>
 
-        {loading && (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'var(--gold-b)', borderTopColor: 'var(--gold)' }}></div>
+      {/* LOADING */}
+      {loading && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "48px 0" }}>
+          <div
+            style={{
+              width: 32, height: 32, borderRadius: "50%",
+              border: "4px solid var(--gold-b)", borderTopColor: "var(--gold)",
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+        </div>
+      )}
+
+      {/* ERROR */}
+      {error && (
+        <div style={{
+          background: "var(--red-bg)", border: "1px solid var(--red-b)",
+          borderRadius: 8, padding: "12px 16px", color: "var(--red)", fontSize: "0.82rem", marginBottom: 16,
+        }}>
+          Error: {error}
+        </div>
+      )}
+
+      {/* EMPTY STATE */}
+      {!loading && !error && bids.length === 0 && (
+        <div className="empty">
+          <div className="empty-icon">{"\uD83D\uDCCB"}</div>
+          <div className="empty-txt">No bids available at the moment.</div>
+          <div className="empty-sub">Check back later for new bid requests.</div>
+        </div>
+      )}
+
+      {/* OPEN INVITATIONS */}
+      {!loading && !error && bids.length > 0 && (
+        <div className="scard">
+          <div className="scard-head">
+            <h3>{"\uD83D\uDCE8"} Open Invitations — Action Required</h3>
+            <span className="tag t-pending">{bids.length} pending</span>
           </div>
-        )}
-
-        {error && (
-          <div className="px-4 py-3 text-sm" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-b)', borderRadius: '8px', color: 'var(--red)' }}>
-            Error: {error}
-          </div>
-        )}
-
-        {!loading && !error && bids.length === 0 && (
-          <div className="text-center py-20" style={{ color: 'var(--muted)' }}>
-            <div className="text-3xl mb-3 opacity-50">📋</div>
-            <p className="font-semibold" style={{ color: 'var(--ink2)' }}>No bids available at the moment.</p>
-            <p className="text-sm mt-1">Check back later for new bid requests.</p>
-          </div>
-        )}
-
-        {!loading && !error && bids.length > 0 && (
-          <div className="grid gap-4">
+          <div className="scard-body" style={{ padding: 14 }}>
             {bids.map((bid) => (
               <Link
                 key={bid.id}
                 href={`/vendor/${bid.id}`}
-                className="block p-5 transition-all hover:-translate-y-0.5"
-                style={{ background: 'var(--card)', border: '1.5px solid var(--border)', borderRadius: '12px' }}
-                onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--gold-b)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.07)'; }}
-                onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
+                style={{ textDecoration: "none", color: "inherit" }}
               >
-                <h2 className="font-bold" style={{ fontSize: '0.95rem', color: 'var(--ink)', fontFamily: "'Bricolage Grotesque', sans-serif" }}>{bid.title}</h2>
-                <p className="text-sm mt-1 line-clamp-3" style={{ color: 'var(--muted)' }}>{bid.description}</p>
-                <div className="mt-3 flex items-center gap-3">
-                  <span className="text-xs font-bold px-2 py-0.5" style={{ background: 'var(--gold-bg)', color: 'var(--gold)', border: '1px solid var(--gold-b)', borderRadius: '100px' }}>
-                    Deadline: {new Date(bid.deadline).toLocaleDateString()}
-                  </span>
+                <div className="invite-card">
+                  <span className="inv-icon">{"\uD83D\uDCE6"}</span>
+                  <div className="inv-body">
+                    <div className="inv-title">{bid.title}</div>
+                    <div className="inv-sub">
+                      {bid.description.length > 100
+                        ? bid.description.slice(0, 100) + "..."
+                        : bid.description}
+                    </div>
+                    <div className="inv-pills">
+                      <span className="inv-pill ip-red">
+                        {"\u23F0"} Deadline: {new Date(bid.deadline).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="btn btn-gold btn-sm">Submit Bid {"\u2192"}</span>
                 </div>
               </Link>
             ))}
           </div>
-        )}
-      </div>
-    </main>
+        </div>
+      )}
+    </div>
   );
 }

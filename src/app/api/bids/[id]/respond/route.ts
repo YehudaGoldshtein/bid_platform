@@ -7,7 +7,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await dbReady;
+    await dbReady();
 
     const { id } = await params;
 

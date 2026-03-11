@@ -4,7 +4,7 @@ import { db, dbReady } from '@/lib/db';
 
 export async function GET() {
   try {
-    await dbReady;
+    await dbReady();
 
     const bidsResult = await db.execute({ sql: 'SELECT * FROM bids', args: [] });
     const bids = bidsResult.rows;
@@ -54,7 +54,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await dbReady;
+    await dbReady();
 
     const body = await request.json();
     const { title, description, deadline, parameters } = body;

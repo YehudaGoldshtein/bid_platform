@@ -2,15 +2,28 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface Parameter {
   name: string;
   options: string[];
 }
 
+function showToast(msg: string) {
+  const el = document.getElementById("bm-toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.opacity = "1";
+  el.style.transform = "translateY(0)";
+  setTimeout(() => {
+    el.style.opacity = "0";
+    el.style.transform = "translateY(12px)";
+  }, 2200);
+}
+
 export default function CreateBidPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [deadline, setDeadline] = useState("");
@@ -18,8 +31,8 @@ export default function CreateBidPage() {
   const [parameters, setParameters] = useState<Parameter[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [optionInputs, setOptionInputs] = useState<Record<number, string>>({});
+  const [dragOver, setDragOver] = useState(false);
 
   const addParameter = () => {
     setParameters([...parameters, { name: "", options: [] }]);
@@ -111,239 +124,316 @@ export default function CreateBidPage() {
     }
   };
 
-  const inputStyle = {
-    background: 'var(--bg)',
-    border: '1.5px solid var(--border)',
-    borderRadius: '7px',
-    padding: '9px 11px',
-    color: 'var(--ink)',
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
-    fontSize: '0.84rem',
-    outline: 'none',
-    width: '100%',
-    transition: 'border-color 0.15s, box-shadow 0.15s',
-  };
+  const validParams = parameters.filter((p) => p.name.trim() && p.options.length > 0);
 
   return (
-    <main className="min-h-screen py-10 px-4" style={{ background: 'var(--bg)' }}>
-      <div className="max-w-4xl mx-auto">
-        <Link href="/customer" className="text-sm mb-4 inline-block transition-colors" style={{ color: 'var(--gold)' }}>&larr; Back to Dashboard</Link>
-        <h1 className="text-3xl font-bold mb-8" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Create New Bid</h1>
-
-        {error && (
-          <div className="px-4 py-3 mb-6 text-sm" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-b)', borderRadius: '8px', color: 'var(--red)' }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Title */}
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-              <span className="flex items-center justify-center w-5 h-5 text-xs font-bold" style={{ background: 'var(--gold-bg)', color: 'var(--gold)', borderRadius: '6px' }}>1</span>
-              <label className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ink2)' }}>Title</label>
-            </div>
-            <div className="p-5">
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--gold-bg)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.boxShadow = 'none'; }}
-                placeholder="Enter bid title"
-              />
-            </div>
-          </div>
-
-          {/* Description */}
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-              <span className="flex items-center justify-center w-5 h-5 text-xs font-bold" style={{ background: 'var(--gold-bg)', color: 'var(--gold)', borderRadius: '6px' }}>2</span>
-              <label className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ink2)' }}>Description</label>
-            </div>
-            <div className="p-5">
-              <textarea
-                required
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                style={{ ...inputStyle, resize: 'vertical' as const, minHeight: '72px' }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--gold-bg)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.boxShadow = 'none'; }}
-                placeholder="Describe what you need..."
-              />
-            </div>
-          </div>
-
-          {/* Deadline */}
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-              <span className="flex items-center justify-center w-5 h-5 text-xs font-bold" style={{ background: 'var(--gold-bg)', color: 'var(--gold)', borderRadius: '6px' }}>3</span>
-              <label className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ink2)' }}>Deadline</label>
-            </div>
-            <div className="p-5">
-              <input
-                type="date"
-                required
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--gold-bg)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.boxShadow = 'none'; }}
-              />
-            </div>
-          </div>
-
-          {/* File Upload */}
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-              <span className="flex items-center justify-center w-5 h-5 text-xs font-bold" style={{ background: 'var(--gold-bg)', color: 'var(--gold)', borderRadius: '6px' }}>4</span>
-              <label className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ink2)' }}>Attachments</label>
-            </div>
-            <div className="p-5">
-              <div className="text-center py-6 cursor-pointer transition-all" style={{ border: '2px dashed var(--border2)', borderRadius: '9px' }}
-                onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.background = 'var(--gold-bg)'; }}
-                onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'transparent'; }}
-              >
-                <div className="text-2xl mb-2">📎</div>
-                <div className="text-sm" style={{ color: 'var(--muted)' }}>
-                  <span style={{ color: 'var(--gold)', fontWeight: 700 }}>Click to upload</span> or drag files here
+    <div className="page on" style={{ display: "block" }}>
+      <div className="fstrip">
+        <span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
+          <Link href="/customer" style={{ color: "var(--gold)", textDecoration: "none", fontWeight: 600 }}>
+            Dashboard
+          </Link>
+          <span style={{ color: "var(--border2)", margin: "0 6px" }}>{"\u203A"}</span>
+          <strong style={{ color: "var(--ink)" }}>New Bid Request</strong>
+        </span>
+        <div className="chip on">Details</div>
+        <div className="chip">Parameters</div>
+        <div className="chip">Attachments</div>
+        <div className="chip">Review</div>
+        <div className="fright">
+          <button className="btn btn-outline btn-xs" type="button" onClick={() => showToast("Draft saved!")}>
+            Save Draft
+          </button>
+        </div>
+      </div>
+      <div className="scroll">
+        <div className="create-wrap">
+          <div>
+            <form onSubmit={handleSubmit}>
+              {error && (
+                <div
+                  style={{
+                    background: "var(--red-bg)",
+                    border: "1px solid var(--red-b)",
+                    borderRadius: "8px",
+                    padding: "12px 16px",
+                    color: "var(--red)",
+                    fontSize: "0.85rem",
+                    marginBottom: "16px",
+                  }}
+                >
+                  {error}
                 </div>
-                <input
-                  type="file"
-                  multiple
-                  onChange={(e) => setFiles(e.target.files)}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  style={{ position: 'relative' }}
-                />
+              )}
+
+              {/* Section 1: Bid Details */}
+              <div className="fcard">
+                <div className="fsect">
+                  <div className="fsect-title">
+                    <span className="fsect-num">1</span> Bid Request Details
+                  </div>
+                  <div className="frow">
+                    <div className="fg">
+                      <label className="flbl">Title *</label>
+                      <input
+                        className="finput"
+                        required
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g. Kitchen Cabinets"
+                      />
+                    </div>
+                    <div className="fg">
+                      <label className="flbl">Bid Deadline *</label>
+                      <input
+                        className="finput"
+                        type="date"
+                        required
+                        value={deadline}
+                        onChange={(e) => setDeadline(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="frow one fg">
+                    <label className="flbl">Scope Description *</label>
+                    <textarea
+                      className="finput"
+                      required
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Describe what you need vendors to bid on..."
+                    />
+                  </div>
+                </div>
               </div>
-              {files && files.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {Array.from(files).map((file, i) => (
-                    <div key={i} className="flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '7px' }}>
-                      <span style={{ color: 'var(--ink)' }}>{file.name}</span>
-                      <span className="ml-auto text-xs" style={{ color: 'var(--muted)' }}>{(file.size / 1024).toFixed(0)} KB</span>
+
+              {/* Section 2: Parameters */}
+              <div className="fcard">
+                <div className="fsect">
+                  <div className="fsect-title" style={{ justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span className="fsect-num">2</span> Parameters
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-xs"
+                      onClick={addParameter}
+                      style={{ fontSize: "0.7rem" }}
+                    >
+                      + Add Parameter
+                    </button>
+                  </div>
+
+                  {parameters.length === 0 && (
+                    <div style={{ color: "var(--faint)", fontSize: "0.82rem", padding: "8px 0" }}>
+                      No parameters yet. Parameters let vendors price different options (e.g., Color, Size).
+                    </div>
+                  )}
+
+                  {parameters.map((param, paramIndex) => (
+                    <div
+                      key={paramIndex}
+                      style={{
+                        border: "1.5px solid var(--border)",
+                        borderRadius: "10px",
+                        padding: "14px",
+                        background: "var(--bg)",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+                        <input
+                          className="finput"
+                          value={param.name}
+                          onChange={(e) => updateParameterName(paramIndex, e.target.value)}
+                          placeholder="Parameter name (e.g., Color)"
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeParameter(paramIndex)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "var(--red)",
+                            fontSize: "0.78rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
+                        {param.options.map((option, optIndex) => (
+                          <span
+                            key={optIndex}
+                            className="vtag"
+                          >
+                            {option}{" "}
+                            <span
+                              className="rm"
+                              onClick={() => removeOption(paramIndex, optIndex)}
+                              style={{ cursor: "pointer" }}
+                            >
+                              {"\u00D7"}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <input
+                          className="finput"
+                          value={optionInputs[paramIndex] || ""}
+                          onChange={(e) => setOptionInputs({ ...optionInputs, [paramIndex]: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addOption(paramIndex);
+                            }
+                          }}
+                          placeholder="Add an option..."
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-xs"
+                          onClick={() => addOption(paramIndex)}
+                        >
+                          Add
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+
+              {/* Section 3: Attachments */}
+              <div className="fcard">
+                <div className="fsect">
+                  <div className="fsect-title">
+                    <span className="fsect-num">3</span> Attachments
+                  </div>
+                  <div
+                    className="dropzone"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOver(false);
+                      if (e.dataTransfer.files.length > 0) setFiles(e.dataTransfer.files);
+                    }}
+                    style={dragOver ? { borderColor: "var(--gold)", background: "var(--gold-bg)" } : {}}
+                  >
+                    <div className="dz-icon">{"\uD83D\uDCCE"}</div>
+                    <div className="dz-txt">
+                      Drop files or <em>browse</em> — PDF plans, specs, images
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={(e) => setFiles(e.target.files)}
+                      style={{ display: "none" }}
+                    />
+                  </div>
+
+                  {files && files.length > 0 &&
+                    Array.from(files).map((file, i) => (
+                      <div className="afile" key={i}>
+                        <span>{"\uD83D\uDCC4"}</span>
+                        <span className="afile-name">{file.name}</span>
+                        <span className="afile-size">{(file.size / 1024).toFixed(0)} KB</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="btn btn-gold"
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  padding: "12px",
+                  fontSize: "0.88rem",
+                  fontWeight: 800,
+                  opacity: submitting ? 0.5 : 1,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {submitting ? "Creating..." : "Create Bid Request \u2192"}
+              </button>
+            </form>
           </div>
 
-          {/* Parameters */}
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-              <span className="flex items-center justify-center w-5 h-5 text-xs font-bold" style={{ background: 'var(--gold-bg)', color: 'var(--gold)', borderRadius: '6px' }}>5</span>
-              <label className="text-xs font-bold uppercase tracking-wider flex-1" style={{ color: 'var(--ink2)' }}>Parameters</label>
-              <button
-                type="button"
-                onClick={addParameter}
-                className="text-xs font-bold px-3 py-1.5 transition-all"
-                style={{ background: 'transparent', border: '1.5px solid var(--border2)', borderRadius: '7px', color: 'var(--ink2)' }}
-                onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.color = 'var(--gold)'; e.currentTarget.style.background = 'var(--gold-bg)'; }}
-                onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--ink2)'; e.currentTarget.style.background = 'transparent'; }}
-              >
-                + Add Parameter
-              </button>
+          {/* Summary sidebar */}
+          <div className="sumcard">
+            <h3>Summary</h3>
+            <div className="srow">
+              <span>Title</span>
+              <span>{title || "\u2014"}</span>
             </div>
-            <div className="p-5">
-              {parameters.length === 0 && (
-                <p className="text-sm" style={{ color: 'var(--faint)' }}>No parameters added yet. Parameters let vendors price different options (e.g., Color, Size).</p>
-              )}
-
-              <div className="space-y-4">
-                {parameters.map((param, paramIndex) => (
-                  <div key={paramIndex} className="p-4" style={{ border: '1.5px solid var(--border)', borderRadius: '10px', background: 'var(--bg)' }}>
-                    <div className="flex items-center gap-3 mb-3">
-                      <input
-                        type="text"
-                        value={param.name}
-                        onChange={(e) => updateParameterName(paramIndex, e.target.value)}
-                        placeholder="Parameter name (e.g., Color)"
-                        className="flex-1 text-sm"
-                        style={{ ...inputStyle, background: '#fff' }}
-                        onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--gold-bg)'; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeParameter(paramIndex)}
-                        className="text-xs font-semibold transition-colors"
-                        style={{ color: 'var(--red)' }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {param.options.map((option, optIndex) => (
-                        <span
-                          key={optIndex}
-                          className="inline-flex items-center text-xs font-semibold px-2.5 py-1"
-                          style={{ background: 'var(--gold-bg)', color: 'var(--gold)', border: '1px solid var(--gold-b)', borderRadius: '100px' }}
-                        >
-                          {option}
-                          <button
-                            type="button"
-                            onClick={() => removeOption(paramIndex, optIndex)}
-                            className="ml-1.5 font-bold opacity-60 hover:opacity-100"
-                            style={{ color: 'var(--gold)' }}
-                          >
-                            &times;
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={optionInputs[paramIndex] || ""}
-                        onChange={(e) => setOptionInputs({ ...optionInputs, [paramIndex]: e.target.value })}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            addOption(paramIndex);
-                          }
-                        }}
-                        placeholder="Add an option..."
-                        className="flex-1 text-sm"
-                        style={{ ...inputStyle, background: '#fff', padding: '7px 11px' }}
-                        onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--gold-bg)'; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => addOption(paramIndex)}
-                        className="text-xs font-semibold px-3 py-1.5 transition-all"
-                        style={{ background: 'transparent', border: '1.5px solid var(--border2)', borderRadius: '7px', color: 'var(--ink2)' }}
-                        onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.color = 'var(--gold)'; }}
-                        onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--ink2)'; }}
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                ))}
+            <div className="srow">
+              <span>Deadline</span>
+              <span>{deadline || "\u2014"}</span>
+            </div>
+            <div className="srow">
+              <span>Parameters</span>
+              <span style={{ color: validParams.length > 0 ? "var(--gold)" : undefined }}>
+                {validParams.length}
+              </span>
+            </div>
+            <div className="srow">
+              <span>Files</span>
+              <span>{files ? files.length : 0}</span>
+            </div>
+            <hr className="sdiv" />
+            <div
+              style={{
+                fontSize: "0.67rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.07em",
+                color: "var(--muted)",
+                marginBottom: "10px",
+              }}
+            >
+              Timeline
+            </div>
+            <div className="tl">
+              <div className="tl-dot" style={{ background: "var(--green)" }}></div>
+              <div>
+                <div className="tl-main">Emails sent</div>
+                <div className="tl-sub">Immediately on publish</div>
               </div>
             </div>
+            <div className="tl">
+              <div className="tl-dot" style={{ background: "var(--blue)" }}></div>
+              <div>
+                <div className="tl-main">Auto-reminder</div>
+                <div className="tl-sub">3 days before deadline</div>
+              </div>
+            </div>
+            <div className="tl">
+              <div className="tl-dot" style={{ background: "var(--border2)" }}></div>
+              <div>
+                <div className="tl-main">Bid Deadline</div>
+                <div className="tl-sub">{deadline ? new Date(deadline + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not set"}</div>
+              </div>
+            </div>
+            <hr className="sdiv" />
+            <div className="infobox">
+              Vendors get a unique link — no login needed. They can submit multiple pricing options.
+            </div>
           </div>
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full text-white py-3 font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: 'var(--gold)', borderRadius: '7px', border: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '0.9rem' }}
-            onMouseOver={(e) => { if (!submitting) { e.currentTarget.style.background = 'var(--gold-l)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(232,146,10,0.3)'; } }}
-            onMouseOut={(e) => { e.currentTarget.style.background = 'var(--gold)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
-          >
-            {submitting ? "Creating..." : "Create Bid Request"}
-          </button>
-        </form>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

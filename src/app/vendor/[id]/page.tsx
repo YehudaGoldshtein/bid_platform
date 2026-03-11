@@ -74,6 +74,14 @@ function makeAdditiveKey(paramName: string, option: string): string {
   return JSON.stringify({ param: paramName, option });
 }
 
+function showToast(msg: string) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.opacity = "1";
+  setTimeout(() => { el.style.opacity = "0"; }, 2200);
+}
+
 export default function VendorBidPage() {
   const params = useParams();
   const id = params.id as string;
@@ -250,349 +258,386 @@ export default function VendorBidPage() {
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    background: 'var(--bg)',
-    border: '1.5px solid var(--border)',
-    borderRadius: '7px',
-    padding: '9px 11px',
-    color: 'var(--ink)',
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
-    fontSize: '0.84rem',
-    outline: 'none',
-    width: '100%',
-    transition: 'border-color 0.15s, box-shadow 0.15s',
-  };
-
-  const focusInput = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = 'var(--gold)';
-    e.currentTarget.style.background = '#fff';
-    e.currentTarget.style.boxShadow = '0 0 0 3px var(--gold-bg)';
-  };
-  const blurInput = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = 'var(--border)';
-    e.currentTarget.style.background = 'var(--bg)';
-    e.currentTarget.style.boxShadow = 'none';
-  };
-
+  /* ── LOADING ── */
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'var(--gold-b)', borderTopColor: 'var(--gold)' }}></div>
-      </main>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 400 }}>
+        <div
+          style={{
+            width: 32, height: 32, borderRadius: "50%",
+            border: "4px solid var(--gold-b)", borderTopColor: "var(--gold)",
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+      </div>
     );
   }
 
+  /* ── FATAL ERROR ── */
   if (error && !bid) {
     return (
-      <main className="min-h-screen py-10 px-4" style={{ background: 'var(--bg)' }}>
-        <div className="max-w-4xl mx-auto">
-          <div className="px-4 py-3 text-sm" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-b)', borderRadius: '8px', color: 'var(--red)' }}>
-            {error}
-          </div>
-          <Link href="/vendor" className="text-sm mt-4 inline-block" style={{ color: 'var(--gold)' }}>&larr; Back to Dashboard</Link>
+      <div style={{ padding: 20 }}>
+        <div style={{
+          background: "var(--red-bg)", border: "1px solid var(--red-b)",
+          borderRadius: 8, padding: "12px 16px", color: "var(--red)", fontSize: "0.82rem", marginBottom: 16,
+        }}>
+          {error}
         </div>
-      </main>
+        <Link href="/vendor" className="btn btn-outline btn-sm">{"\u2190"} Back to Dashboard</Link>
+      </div>
     );
   }
 
+  /* ── SUCCESS ── */
   if (success) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
-        <div className="text-center max-w-md w-full p-10" style={{ background: 'var(--card)', border: '1.5px solid var(--green-b)', borderRadius: '12px' }}>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl" style={{ background: 'var(--green-bg)', border: '2px solid var(--green-b)' }}>
-            ✓
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 400 }}>
+        <div className="scard" style={{ border: "2px solid var(--green-b)", maxWidth: 440, width: "100%", textAlign: "center" }}>
+          <div className="scard-body" style={{ padding: 40 }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: "50%",
+              background: "var(--green-bg)", border: "2px solid var(--green-b)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px", fontSize: "1.6rem", color: "var(--green)",
+            }}>
+              {"\u2713"}
+            </div>
+            <h2 style={{
+              fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 800,
+              fontSize: "1.2rem", color: "var(--green)", marginBottom: 8,
+            }}>
+              Bid Submitted!
+            </h2>
+            <p style={{ color: "var(--muted)", fontSize: "0.84rem", marginBottom: 24 }}>
+              Your prices have been successfully submitted.
+            </p>
+            <Link href="/vendor" className="btn btn-gold">Back to Dashboard</Link>
           </div>
-          <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--green)' }}>Bid Submitted!</h2>
-          <p className="mb-6 text-sm" style={{ color: 'var(--muted)' }}>Your prices have been successfully submitted.</p>
-          <Link
-            href="/vendor"
-            className="inline-block text-white px-6 py-2.5 font-bold text-sm transition-all"
-            style={{ background: 'var(--gold)', borderRadius: '7px' }}
-            onMouseOver={(e) => { e.currentTarget.style.background = 'var(--gold-l)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.background = 'var(--gold)'; }}
-          >
-            Back to Vendor Portal
-          </Link>
         </div>
-      </main>
+      </div>
     );
   }
 
+  /* ── MAIN FORM ── */
   return (
-    <main className="min-h-screen py-10 px-4" style={{ background: 'var(--bg)' }}>
-      <div className="max-w-4xl mx-auto">
-        <Link href="/vendor" className="text-sm mb-4 inline-block transition-colors" style={{ color: 'var(--gold)' }}>&larr; Back to Portal</Link>
+    <div className="page on">
+      {/* HEADER */}
+      <div className="nb-header">
+        <div className="nb-title">{"\u270F\uFE0F"} Submit Bid — {bid?.title}</div>
+        <div className="nb-sub">{bid?.description}</div>
+      </div>
 
-        {/* Bid Info */}
-        <div className="mb-6 overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
-          <div className="p-5">
-            <h1 className="text-xl font-bold" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>{bid?.title}</h1>
-            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>{bid?.description}</p>
-            <div className="mt-3">
-              <span className="text-xs font-bold px-2 py-0.5" style={{ background: 'var(--gold-bg)', color: 'var(--gold)', border: '1px solid var(--gold-b)', borderRadius: '100px' }}>
-                Deadline: {bid ? new Date(bid.deadline).toLocaleDateString() : ""}
-              </span>
+      {/* BID INFO CARD */}
+      <div className="fcard" style={{ marginBottom: 16 }}>
+        <div className="scard">
+          <div className="scard-head">
+            <span className="fsect-num">1</span>
+            <h3>{"\uD83D\uDCCB"} Bid Details</h3>
+            <span className="tag t-pending" style={{ marginLeft: "auto" }}>
+              {"\u23F0"} Deadline: {bid ? new Date(bid.deadline).toLocaleDateString() : ""}
+            </span>
+          </div>
+          <div className="scard-body">
+            <p style={{ color: "var(--muted)", fontSize: "0.84rem", marginBottom: 12 }}>{bid?.description}</p>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: "0.78rem" }}>
+              {bid?.parameters && bid.parameters.length > 0 && (
+                <span style={{ color: "var(--ink2)" }}>
+                  <strong>{bid.parameters.length}</strong> parameter{bid.parameters.length !== 1 ? "s" : ""}
+                  {" \u00B7 "}
+                  <strong>{totalCombinations}</strong> combination{totalCombinations !== 1 ? "s" : ""}
+                  {" \u00B7 "}
+                  <strong>{totalOptions}</strong> total option{totalOptions !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Attached Files */}
-        {bid?.files && bid.files.length > 0 && (
-          <div className="mb-6 overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
-            <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-              <h2 className="font-bold text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Attached Files</h2>
-            </div>
-            <div className="p-5 space-y-2">
-              {bid.files.map((file) => (
-                <a
-                  key={file.id}
-                  href={`/api/bids/${id}/files/${file.id}`}
-                  download
-                  className="flex items-center gap-2 px-3 py-2 text-sm transition-all"
-                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '7px', color: 'var(--ink)' }}
-                  onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.color = 'var(--gold)'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--ink)'; }}
-                >
-                  📄 {file.filename}
-                </a>
-              ))}
-            </div>
+      {/* ATTACHED FILES */}
+      {bid?.files && bid.files.length > 0 && (
+        <div className="scard" style={{ marginBottom: 16 }}>
+          <div className="scard-head">
+            <h3>{"\uD83D\uDCC1"} Attached Files</h3>
           </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div className="px-4 py-3 mb-6 text-sm" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-b)', borderRadius: '8px', color: 'var(--red)' }}>
-            {error}
+          <div className="scard-body">
+            {bid.files.map((file) => (
+              <a
+                key={file.id}
+                href={`/api/bids/${id}/files/${file.id}`}
+                download
+                className="afile"
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "8px 12px", marginBottom: 6,
+                  background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 7,
+                  textDecoration: "none", color: "var(--ink)", fontSize: "0.82rem",
+                  transition: "border-color 0.15s",
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = "var(--gold)"; e.currentTarget.style.color = "var(--gold)"; }}
+                onMouseOut={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--ink)"; }}
+              >
+                {"\uD83D\uDCC4"} {file.filename}
+              </a>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Vendor Name */}
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-              <label className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ink2)' }}>Your Company Name</label>
-            </div>
-            <div className="p-5">
+      {/* ERROR */}
+      {error && (
+        <div style={{
+          background: "var(--red-bg)", border: "1px solid var(--red-b)",
+          borderRadius: 8, padding: "12px 16px", color: "var(--red)", fontSize: "0.82rem", marginBottom: 16,
+        }}>
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        {/* VENDOR NAME */}
+        <div className="scard" style={{ marginBottom: 16 }}>
+          <div className="scard-head">
+            <span className="fsect-num">2</span>
+            <h3>Your Company</h3>
+          </div>
+          <div className="scard-body">
+            <div className="fg">
+              <label className="flbl">Company Name <span className="req">*</span></label>
               <input
+                className="finput"
                 type="text"
                 required
                 value={vendorName}
                 onChange={(e) => setVendorName(e.target.value)}
-                style={inputStyle}
-                onFocus={focusInput}
-                onBlur={blurInput}
                 placeholder="Enter your company name"
               />
             </div>
           </div>
+        </div>
 
-          {/* Pricing Mode Toggle */}
-          {bid?.parameters && bid.parameters.length > 0 && (
-            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-              <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-                <h2 className="font-bold text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Pricing Mode</h2>
-              </div>
-              <div className="p-5 flex gap-3">
+        {/* PRICING MODE TOGGLE */}
+        {bid?.parameters && bid.parameters.length > 0 && (
+          <div className="scard" style={{ marginBottom: 16 }}>
+            <div className="scard-head">
+              <span className="fsect-num">3</span>
+              <h3>Pricing Mode</h3>
+            </div>
+            <div className="scard-body">
+              <div style={{ display: "flex", gap: 10 }}>
                 <button
                   type="button"
+                  className={`btn ${pricingMode === "combination" ? "btn-gold" : "btn-outline"}`}
                   onClick={() => setPricingMode("combination")}
-                  className="flex-1 py-3 px-4 text-sm font-semibold transition-all text-left"
-                  style={{
-                    borderRadius: '10px',
-                    border: pricingMode === "combination" ? '2px solid var(--gold)' : '1.5px solid var(--border)',
-                    background: pricingMode === "combination" ? 'var(--gold-bg)' : 'var(--bg)',
-                    color: pricingMode === "combination" ? 'var(--gold)' : 'var(--ink2)',
-                  }}
+                  style={{ flex: 1, justifyContent: "center", flexDirection: "column", alignItems: "flex-start", padding: "14px 16px" }}
                 >
-                  <div className="font-bold">Combination</div>
-                  <div className="text-xs mt-1 opacity-75">
+                  <div style={{ fontWeight: 700 }}>Combination</div>
+                  <div style={{ fontSize: "0.72rem", marginTop: 4, opacity: 0.85, fontWeight: 500 }}>
                     Unique price per combination ({totalCombinations} prices)
                   </div>
                 </button>
                 <button
                   type="button"
+                  className={`btn ${pricingMode === "additive" ? "btn-gold" : "btn-outline"}`}
                   onClick={() => setPricingMode("additive")}
-                  className="flex-1 py-3 px-4 text-sm font-semibold transition-all text-left"
-                  style={{
-                    borderRadius: '10px',
-                    border: pricingMode === "additive" ? '2px solid var(--gold)' : '1.5px solid var(--border)',
-                    background: pricingMode === "additive" ? 'var(--gold-bg)' : 'var(--bg)',
-                    color: pricingMode === "additive" ? 'var(--gold)' : 'var(--ink2)',
-                  }}
+                  style={{ flex: 1, justifyContent: "center", flexDirection: "column", alignItems: "flex-start", padding: "14px 16px" }}
                 >
-                  <div className="font-bold">Additive</div>
-                  <div className="text-xs mt-1 opacity-75">
+                  <div style={{ fontWeight: 700 }}>Additive</div>
+                  <div style={{ fontSize: "0.72rem", marginTop: 4, opacity: 0.85, fontWeight: 500 }}>
                     Base price + per-option additions ({totalOptions} prices)
                   </div>
                 </button>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Combination Price Grid */}
-          {pricingMode === "combination" && (
-            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-              <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-                <h2 className="font-bold text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Price Grid</h2>
-              </div>
-              <div className="p-5">
-                {combinationRows.length === 0 && (
-                  <p className="text-sm" style={{ color: 'var(--faint)' }}>This bid has no parameters. No price grid to fill.</p>
-                )}
-
-                {combinationRows.length > 0 && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full" style={{ borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                          {bid?.parameters?.map((p) => (
-                            <th key={p.name} className="text-left py-2.5 px-3" style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>
-                              {p.name}
-                            </th>
-                          ))}
-                          <th className="text-left py-2.5 px-3" style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>Price</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {combinationRows.map((row, index) => (
-                          <tr key={index} style={{ borderBottom: '1px solid var(--border)' }}
-                            onMouseOver={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'var(--gold-bg)'; }}
-                            onMouseOut={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
-                          >
-                            {bid?.parameters?.map((p) => (
-                              <td key={p.name} className="py-2 px-3 text-sm" style={{ color: 'var(--ink2)' }}>
-                                {row.combination[p.name]}
-                              </td>
-                            ))}
-                            <td className="py-2 px-3">
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={row.price}
-                                onChange={(e) => updateCombinationPrice(index, e.target.value)}
-                                style={{ ...inputStyle, width: '120px', padding: '7px 11px' }}
-                                onFocus={focusInput}
-                                onBlur={blurInput}
-                                placeholder="0.00"
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+        {/* COMBINATION PRICE GRID */}
+        {pricingMode === "combination" && (
+          <div className="scard" style={{ marginBottom: 16 }}>
+            <div className="scard-head">
+              <span className="fsect-num">{bid?.parameters && bid.parameters.length > 0 ? "4" : "3"}</span>
+              <h3>Price Grid</h3>
+              <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "var(--muted)" }}>
+                {combinationRows.filter(r => r.price !== "").length} / {combinationRows.length} filled
+              </span>
             </div>
-          )}
-
-          {/* Additive Pricing */}
-          {pricingMode === "additive" && (
-            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-              <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-                <h2 className="font-bold text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Additive Pricing</h2>
-              </div>
-              <div className="p-5">
-                <p className="text-sm mb-4" style={{ color: 'var(--faint)' }}>
-                  Set a base price, then specify how much each option adds to the total.
-                </p>
-
-                {/* Base Price */}
-                <div className="mb-6">
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--ink2)' }}>Base Price</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={basePrice}
-                    onChange={(e) => setBasePrice(e.target.value)}
-                    style={{ ...inputStyle, width: '180px' }}
-                    onFocus={focusInput}
-                    onBlur={blurInput}
-                    placeholder="0.00"
-                  />
+            <div className="scard-body" style={{ padding: 0 }}>
+              {combinationRows.length === 0 && (
+                <div className="empty">
+                  <div className="empty-txt">No parameters defined</div>
+                  <div className="empty-sub">This bid has no parameters. Just enter your vendor name and submit.</div>
                 </div>
+              )}
 
-                {/* Per-option additions grouped by parameter */}
-                {bid?.parameters?.map((param) => (
-                  <div key={param.name} className="mb-6 last:mb-0">
-                    <h3 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--ink2)' }}>{param.name}</h3>
-                    <div className="space-y-2">
-                      {param.options.map((option) => {
-                        const rowIndex = additiveRows.findIndex(
-                          (r) => r.paramName === param.name && r.option === option
-                        );
-                        if (rowIndex === -1) return null;
-                        return (
-                          <div key={option} className="flex items-center gap-3">
-                            <span className="text-sm w-40" style={{ color: 'var(--ink2)' }}>{option}</span>
-                            <span className="text-sm" style={{ color: 'var(--faint)' }}>+</span>
+              {combinationRows.length > 0 && (
+                <div style={{ overflowX: "auto" }}>
+                  <table className="ctable" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        {bid?.parameters?.map((p) => (
+                          <th key={p.name} style={{
+                            textAlign: "left", padding: "10px 14px",
+                            fontSize: "0.68rem", fontWeight: 800, textTransform: "uppercase",
+                            letterSpacing: "0.07em", color: "var(--muted)",
+                            borderBottom: "2px solid var(--border)", whiteSpace: "nowrap",
+                          }}>
+                            {p.name}
+                          </th>
+                        ))}
+                        <th style={{
+                          textAlign: "left", padding: "10px 14px",
+                          fontSize: "0.68rem", fontWeight: 800, textTransform: "uppercase",
+                          letterSpacing: "0.07em", color: "var(--muted)",
+                          borderBottom: "2px solid var(--border)",
+                        }}>
+                          Price
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {combinationRows.map((row, index) => (
+                        <tr
+                          key={index}
+                          style={{ borderBottom: "1px solid var(--border)", transition: "background 0.1s" }}
+                          onMouseOver={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "var(--gold-bg)"; }}
+                          onMouseOut={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
+                        >
+                          {bid?.parameters?.map((p) => (
+                            <td key={p.name} style={{ padding: "12px 14px", fontSize: "0.82rem", color: "var(--ink2)", verticalAlign: "middle" }}>
+                              {row.combination[p.name]}
+                            </td>
+                          ))}
+                          <td style={{ padding: "8px 14px", verticalAlign: "middle" }}>
                             <input
+                              className="finput"
                               type="number"
                               step="0.01"
                               min="0"
-                              value={additiveRows[rowIndex].addition}
-                              onChange={(e) => updateAdditiveAddition(rowIndex, e.target.value)}
-                              style={{ ...inputStyle, width: '120px', padding: '7px 11px' }}
-                              onFocus={focusInput}
-                              onBlur={blurInput}
+                              value={row.price}
+                              onChange={(e) => updateCombinationPrice(index, e.target.value)}
                               placeholder="0.00"
+                              style={{ width: 130, padding: "7px 11px" }}
                             />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Conditional Discount Rules */}
-          {pricingMode === "additive" && bid?.parameters && bid.parameters.length > 1 && (
-            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-              <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-                <div className="flex-1">
-                  <h2 className="font-bold text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Conditional Discounts</h2>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--faint)' }}>Optional: define discounts when specific options are selected.</p>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <button
-                  type="button"
-                  onClick={addRule}
-                  className="text-xs font-bold px-3 py-1.5 transition-all"
-                  style={{ background: 'transparent', border: '1.5px solid var(--border2)', borderRadius: '7px', color: 'var(--ink2)' }}
-                  onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.color = 'var(--gold)'; e.currentTarget.style.background = 'var(--gold-bg)'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--ink2)'; e.currentTarget.style.background = 'transparent'; }}
-                >
-                  + Add Rule
-                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ADDITIVE PRICING */}
+        {pricingMode === "additive" && (
+          <div className="scard" style={{ marginBottom: 16 }}>
+            <div className="scard-head">
+              <span className="fsect-num">{bid?.parameters && bid.parameters.length > 0 ? "4" : "3"}</span>
+              <h3>Additive Pricing</h3>
+            </div>
+            <div className="scard-body">
+              <p style={{ color: "var(--faint)", fontSize: "0.82rem", marginBottom: 16 }}>
+                Set a base price, then specify how much each option adds to the total.
+              </p>
+
+              {/* Base Price */}
+              <div className="fg" style={{ marginBottom: 20 }}>
+                <label className="flbl">Base Price <span className="req">*</span></label>
+                <input
+                  className="finput"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={basePrice}
+                  onChange={(e) => setBasePrice(e.target.value)}
+                  placeholder="0.00"
+                  style={{ width: 200 }}
+                />
               </div>
-              <div className="p-5">
-                {rules.length === 0 && (
-                  <p className="text-sm" style={{ color: 'var(--faint)' }}>No discount rules added.</p>
-                )}
 
-                <div className="space-y-4">
-                  {rules.map((rule, ruleIndex) => (
-                    <div key={rule.id} className="p-4" style={{ border: '1.5px solid var(--border)', borderRadius: '10px', background: 'var(--bg)' }}>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--gold)' }}>Rule {ruleIndex + 1}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeRule(ruleIndex)}
-                          className="text-xs font-semibold"
-                          style={{ color: 'var(--red)' }}
-                        >
-                          Remove
-                        </button>
-                      </div>
+              {/* Per-option additions grouped by parameter */}
+              {bid?.parameters?.map((param) => (
+                <div key={param.name} style={{ marginBottom: 20 }}>
+                  <div className="divider">{param.name}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                    {param.options.map((option) => {
+                      const rowIndex = additiveRows.findIndex(
+                        (r) => r.paramName === param.name && r.option === option
+                      );
+                      if (rowIndex === -1) return null;
+                      return (
+                        <div key={option} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <span style={{ fontSize: "0.82rem", color: "var(--ink2)", width: 160, flexShrink: 0 }}>{option}</span>
+                          <span style={{ fontSize: "0.82rem", color: "var(--faint)" }}>+</span>
+                          <input
+                            className="finput"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={additiveRows[rowIndex].addition}
+                            onChange={(e) => updateAdditiveAddition(rowIndex, e.target.value)}
+                            placeholder="0.00"
+                            style={{ width: 130, padding: "7px 11px" }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
+        {/* CONDITIONAL DISCOUNT RULES */}
+        {pricingMode === "additive" && bid?.parameters && bid.parameters.length > 1 && (
+          <div className="scard" style={{ marginBottom: 16 }}>
+            <div className="scard-head">
+              <span className="fsect-num">5</span>
+              <h3>Conditional Discounts</h3>
+              <span style={{ fontSize: "0.72rem", color: "var(--faint)", marginLeft: 8 }}>Optional</span>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={addRule}
+                style={{ marginLeft: "auto" }}
+              >
+                + Add Rule
+              </button>
+            </div>
+            <div className="scard-body">
+              {rules.length === 0 && (
+                <p style={{ color: "var(--faint)", fontSize: "0.82rem" }}>
+                  No discount rules added. Click &quot;+ Add Rule&quot; to define conditional discounts.
+                </p>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {rules.map((rule, ruleIndex) => (
+                  <div key={rule.id} className="scard" style={{ background: "var(--bg)", margin: 0 }}>
+                    <div className="scard-head" style={{ padding: "10px 14px" }}>
+                      <span style={{ fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--gold)" }}>
+                        Rule {ruleIndex + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeRule(ruleIndex)}
+                        style={{
+                          marginLeft: "auto", background: "none", border: "none",
+                          cursor: "pointer", color: "var(--red)", fontSize: "0.78rem", fontWeight: 600,
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="scard-body" style={{ padding: 14 }}>
                       {/* Condition */}
-                      <div className="flex flex-wrap items-center gap-2 mb-3">
-                        <span className="text-sm font-semibold" style={{ color: 'var(--ink2)' }}>When</span>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink2)" }}>When</span>
                         <select
+                          className="finput"
                           value={rule.conditionParam}
                           onChange={(e) => {
                             const param = bid.parameters.find((p) => p.name === e.target.value);
@@ -601,21 +646,18 @@ export default function VendorBidPage() {
                               conditionOption: param?.options?.[0] || "",
                             });
                           }}
-                          style={{ ...inputStyle, width: 'auto', padding: '6px 10px', fontSize: '0.82rem' }}
-                          onFocus={focusInput}
-                          onBlur={blurInput}
+                          style={{ width: "auto", padding: "6px 10px", fontSize: "0.82rem" }}
                         >
                           {bid.parameters.map((p) => (
                             <option key={p.name} value={p.name}>{p.name}</option>
                           ))}
                         </select>
-                        <span className="text-sm" style={{ color: 'var(--muted)' }}>=</span>
+                        <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>=</span>
                         <select
+                          className="finput"
                           value={rule.conditionOption}
                           onChange={(e) => updateRule(ruleIndex, { conditionOption: e.target.value })}
-                          style={{ ...inputStyle, width: 'auto', padding: '6px 10px', fontSize: '0.82rem' }}
-                          onFocus={focusInput}
-                          onBlur={blurInput}
+                          style={{ width: "auto", padding: "6px 10px", fontSize: "0.82rem" }}
                         >
                           {bid.parameters
                             .find((p) => p.name === rule.conditionParam)
@@ -626,9 +668,10 @@ export default function VendorBidPage() {
                       </div>
 
                       {/* Target */}
-                      <div className="flex flex-wrap items-center gap-2 mb-3">
-                        <span className="text-sm font-semibold" style={{ color: 'var(--ink2)' }}>Then</span>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink2)" }}>Then</span>
                         <select
+                          className="finput"
                           value={rule.targetType}
                           onChange={(e) => {
                             const targetType = e.target.value as "total" | "param_option";
@@ -644,9 +687,7 @@ export default function VendorBidPage() {
                               });
                             }
                           }}
-                          style={{ ...inputStyle, width: 'auto', padding: '6px 10px', fontSize: '0.82rem' }}
-                          onFocus={focusInput}
-                          onBlur={blurInput}
+                          style={{ width: "auto", padding: "6px 10px", fontSize: "0.82rem" }}
                         >
                           <option value="total">total price</option>
                           <option value="param_option">specific option</option>
@@ -655,6 +696,7 @@ export default function VendorBidPage() {
                         {rule.targetType === "param_option" && (
                           <>
                             <select
+                              className="finput"
                               value={rule.targetParam}
                               onChange={(e) => {
                                 const param = bid.parameters.find((p) => p.name === e.target.value);
@@ -663,9 +705,7 @@ export default function VendorBidPage() {
                                   targetOption: param?.options?.[0] || "",
                                 });
                               }}
-                              style={{ ...inputStyle, width: 'auto', padding: '6px 10px', fontSize: '0.82rem' }}
-                              onFocus={focusInput}
-                              onBlur={blurInput}
+                              style={{ width: "auto", padding: "6px 10px", fontSize: "0.82rem" }}
                             >
                               {bid.parameters
                                 .filter((p) => p.name !== rule.conditionParam)
@@ -673,13 +713,12 @@ export default function VendorBidPage() {
                                   <option key={p.name} value={p.name}>{p.name}</option>
                                 ))}
                             </select>
-                            <span className="text-sm" style={{ color: 'var(--muted)' }}>=</span>
+                            <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>=</span>
                             <select
+                              className="finput"
                               value={rule.targetOption}
                               onChange={(e) => updateRule(ruleIndex, { targetOption: e.target.value })}
-                              style={{ ...inputStyle, width: 'auto', padding: '6px 10px', fontSize: '0.82rem' }}
-                              onFocus={focusInput}
-                              onBlur={blurInput}
+                              style={{ width: "auto", padding: "6px 10px", fontSize: "0.82rem" }}
                             >
                               {bid.parameters
                                 .find((p) => p.name === rule.targetParam)
@@ -692,50 +731,51 @@ export default function VendorBidPage() {
                       </div>
 
                       {/* Discount */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold" style={{ color: 'var(--ink2)' }}>gets</span>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink2)" }}>gets</span>
                         <input
+                          className="finput"
                           type="number"
                           step="0.01"
                           min="0"
                           value={rule.discountValue}
                           onChange={(e) => updateRule(ruleIndex, { discountValue: e.target.value })}
-                          style={{ ...inputStyle, width: '90px', padding: '6px 10px', fontSize: '0.82rem' }}
-                          onFocus={focusInput}
-                          onBlur={blurInput}
                           placeholder="0"
+                          style={{ width: 90, padding: "6px 10px", fontSize: "0.82rem" }}
                         />
                         <select
+                          className="finput"
                           value={rule.discountType}
                           onChange={(e) => updateRule(ruleIndex, { discountType: e.target.value as "percentage" | "fixed" })}
-                          style={{ ...inputStyle, width: 'auto', padding: '6px 10px', fontSize: '0.82rem' }}
-                          onFocus={focusInput}
-                          onBlur={blurInput}
+                          style={{ width: "auto", padding: "6px 10px", fontSize: "0.82rem" }}
                         >
                           <option value="percentage">% off</option>
                           <option value="fixed">$ off</option>
                         </select>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Submit */}
+        {/* SUBMIT */}
+        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <Link href="/vendor" className="btn btn-outline" style={{ flex: 1, justifyContent: "center", textDecoration: "none" }}>
+            Cancel
+          </Link>
           <button
             type="submit"
             disabled={submitting}
-            className="w-full text-white py-3 font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: 'var(--gold)', borderRadius: '7px', border: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '0.9rem' }}
-            onMouseOver={(e) => { if (!submitting) { e.currentTarget.style.background = 'var(--gold-l)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(232,146,10,0.3)'; } }}
-            onMouseOut={(e) => { e.currentTarget.style.background = 'var(--gold)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+            className="btn btn-gold"
+            style={{ flex: 2, justifyContent: "center", opacity: submitting ? 0.5 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
           >
-            {submitting ? "Submitting..." : "Submit Prices"}
+            {submitting ? "Submitting..." : "\uD83D\uDE80 Submit Bid \u2192"}
           </button>
-        </form>
-      </div>
-    </main>
+        </div>
+      </form>
+    </div>
   );
 }

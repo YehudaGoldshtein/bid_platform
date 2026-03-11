@@ -44,6 +44,35 @@ interface MatchedPrice {
   pricing_mode: string;
 }
 
+function showToast(msg: string) {
+  const el = document.getElementById("bm-toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.opacity = "1";
+  el.style.transform = "translateY(0)";
+  setTimeout(() => {
+    el.style.opacity = "0";
+    el.style.transform = "translateY(12px)";
+  }, 2200);
+}
+
+const AVATAR_COLORS = [
+  { bg: "var(--gold-bg)", color: "var(--gold)" },
+  { bg: "var(--blue-bg)", color: "var(--blue)" },
+  { bg: "var(--red-bg)", color: "var(--red)" },
+  { bg: "var(--green-bg)", color: "var(--green)" },
+  { bg: "var(--cyan-bg, var(--blue-bg))", color: "var(--cyan, var(--blue))" },
+];
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .substring(0, 2);
+}
+
 export default function CustomerBidDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -152,81 +181,128 @@ export default function CustomerBidDetailPage() {
     }
   }
 
-  const inputStyle = {
-    background: 'var(--bg)',
-    border: '1.5px solid var(--border)',
-    borderRadius: '7px',
-    padding: '9px 11px',
-    color: 'var(--ink)',
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
-    fontSize: '0.84rem',
-    outline: 'none',
-    width: '100%',
-    transition: 'border-color 0.15s, box-shadow 0.15s',
-  };
+  const sortedPrices = [...matchingPrices].sort((a, b) => a.price - b.price);
+  const bestPrice = sortedPrices.length > 0 ? sortedPrices[0].price : null;
+  const avgPrice =
+    sortedPrices.length > 0
+      ? sortedPrices.reduce((s, p) => s + p.price, 0) / sortedPrices.length
+      : 0;
+  const responseCount = bid?.vendor_responses?.length ?? 0;
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'var(--gold-b)', borderTopColor: 'var(--gold)' }}></div>
-      </main>
+      <div className="scroll" style={{ display: "flex", justifyContent: "center", paddingTop: "80px" }}>
+        <div
+          style={{
+            width: "32px",
+            height: "32px",
+            border: "4px solid var(--gold-b)",
+            borderTopColor: "var(--gold)",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+          }}
+        ></div>
+      </div>
     );
   }
 
   if (error || !bid) {
     return (
-      <main className="min-h-screen py-10 px-4" style={{ background: 'var(--bg)' }}>
-        <div className="max-w-4xl mx-auto">
-          <div className="px-4 py-3 text-sm" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-b)', borderRadius: '8px', color: 'var(--red)' }}>
-            {error || "Bid not found"}
-          </div>
-          <Link href="/customer" className="text-sm mt-4 inline-block" style={{ color: 'var(--gold)' }}>&larr; Back to Dashboard</Link>
+      <div className="scroll" style={{ padding: "20px" }}>
+        <div
+          style={{
+            background: "var(--red-bg)",
+            border: "1px solid var(--red-b)",
+            borderRadius: "8px",
+            padding: "12px 16px",
+            color: "var(--red)",
+            fontSize: "0.85rem",
+          }}
+        >
+          {error || "Bid not found"}
         </div>
-      </main>
+        <Link href="/customer" style={{ color: "var(--gold)", fontSize: "0.85rem", marginTop: "12px", display: "inline-block" }}>
+          {"\u2190"} Back to Dashboard
+        </Link>
+      </div>
     );
   }
 
-  const sortedPrices = [...matchingPrices].sort((a, b) => a.price - b.price);
-  const bestPrice = sortedPrices.length > 0 ? sortedPrices[0].price : null;
+  const hasParams = bid.parameters && bid.parameters.length > 0;
 
   return (
-    <main className="min-h-screen py-10 px-4" style={{ background: 'var(--bg)' }}>
-      <div className="max-w-4xl mx-auto">
-        <Link href="/customer" className="text-sm mb-4 inline-block transition-colors" style={{ color: 'var(--gold)' }}>&larr; Back to Dashboard</Link>
+    <div className="page on" style={{ display: "block" }}>
+      <div className="fstrip">
+        <div className="fs-search">
+          <span style={{ color: "var(--faint)" }}>{"\uD83D\uDD0D"}</span>
+          <input placeholder="Search vendor, option, price\u2026" />
+        </div>
+        <div className="chip on" onClick={() => showToast("Filter toggled")}>All Vendors</div>
+        <div className="chip" onClick={() => showToast("Filter toggled")}>Lowest Price</div>
+        <div className="chip" onClick={() => showToast("Filter toggled")}>Fastest Delivery</div>
+        <div className="chip" style={{ borderStyle: "dashed", color: "var(--gold)" }} onClick={() => showToast("Custom filters coming soon")}>
+          + Filter
+        </div>
+        <span className="fcount">{responseCount} received</span>
+        <div className="fright">
+          <select className="sort-sel">
+            <option>Sort: Price {"\u2191"}</option>
+            <option>Sort: Name</option>
+            <option>Sort: Date</option>
+          </select>
+          <button className="btn btn-outline btn-xs" onClick={() => showToast("Export coming soon")}>
+            {"\uD83D\uDCE4"} Export CSV
+          </button>
+          <button className="btn btn-gold btn-xs" onClick={() => showToast("Finalize coming soon")}>
+            Finalize {"\u2192"}
+          </button>
+        </div>
+      </div>
 
-        {/* Bid Info */}
-        <div className="mb-6 overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
-          <div className="p-5">
-            <h1 className="text-xl font-bold" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>{bid.title}</h1>
-            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>{bid.description}</p>
-            <div className="flex gap-4 mt-3">
-              <span className="text-xs" style={{ color: 'var(--faint)' }}>Deadline: {new Date(bid.deadline).toLocaleDateString()}</span>
-              <span className="text-xs font-bold px-2 py-0.5" style={{ background: 'var(--gold-bg)', color: 'var(--gold)', border: '1px solid var(--gold-b)', borderRadius: '100px' }}>
-                {bid.vendor_responses?.length || 0} response{(bid.vendor_responses?.length || 0) !== 1 ? "s" : ""}
-              </span>
+      <div className="compare-shell">
+        <div className="compare-main">
+          {/* Insight row */}
+          <div className="insight-row">
+            <div className="ins">
+              <div className="ins-lbl">Best Price</div>
+              <div className="ins-val" style={{ color: bestPrice ? "var(--green)" : undefined }}>
+                {bestPrice !== null ? `$${Number(bestPrice).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "\u2014"}
+              </div>
+            </div>
+            <div className="ins">
+              <div className="ins-lbl">Avg Price</div>
+              <div className="ins-val">
+                {avgPrice > 0 ? `$${Math.round(avgPrice).toLocaleString()}` : "\u2014"}
+              </div>
+            </div>
+            <div className="ins">
+              <div className="ins-lbl">Responses</div>
+              <div className="ins-val">{responseCount}</div>
+            </div>
+            <div className="ins">
+              <div className="ins-lbl">Deadline</div>
+              <div className="ins-val" style={{ fontSize: "1rem" }}>
+                {new Date(bid.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Parameter Selection */}
-        {bid.parameters && bid.parameters.length > 0 && (
-          <div className="mb-6 overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
-            <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-              <h2 className="font-bold text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Select Parameters</h2>
-            </div>
-            <div className="p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Parameter selectors */}
+          {hasParams && (
+            <div className="scard" style={{ marginBottom: "16px" }}>
+              <div className="scard-head">
+                <h3>Select Parameters to Compare</h3>
+              </div>
+              <div style={{ padding: "16px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
                 {bid.parameters.map((param) => (
                   <div key={param.name}>
-                    <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--ink2)' }}>{param.name}</label>
+                    <label className="flbl">{param.name}</label>
                     <select
+                      className="finput"
                       value={selections[param.name] || ""}
                       onChange={(e) =>
                         setSelections({ ...selections, [param.name]: e.target.value })
                       }
-                      style={{ ...inputStyle, cursor: 'pointer' }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--gold-bg)'; }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.boxShadow = 'none'; }}
                     >
                       <option value="">-- Select {param.name} --</option>
                       {param.options.map((opt) => (
@@ -239,80 +315,179 @@ export default function CustomerBidDetailPage() {
                 ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Price Table */}
-        <div className="overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
-          <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
-            <h2 className="font-bold text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Vendor Prices</h2>
-          </div>
-          <div className="p-5">
-            {!allSelected && bid.parameters && bid.parameters.length > 0 && (
-              <p className="text-sm" style={{ color: 'var(--faint)' }}>Please select all parameters above to view vendor prices.</p>
+          {/* Vendor table */}
+          <div className="scard">
+            <div className="scard-head">
+              <h3>Bids — {bid.title}</h3>
+              <span className="tag tag-pending">
+                {responseCount} of {responseCount} received
+              </span>
+            </div>
+
+            {hasParams && !allSelected && (
+              <div style={{ padding: "24px", textAlign: "center", color: "var(--muted)", fontSize: "0.85rem" }}>
+                Select all parameters above to view vendor prices.
+              </div>
             )}
 
-            {allSelected && (
-              <>
-                {sortedPrices.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full" style={{ borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                          <th className="text-left py-2.5 px-3" style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>Vendor</th>
-                          <th className="text-left py-2.5 px-3" style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>Price</th>
-                          <th className="text-left py-2.5 px-3" style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>Mode</th>
-                          <th className="text-left py-2.5 px-3" style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>Submitted</th>
+            {(!hasParams || allSelected) && (
+              <table className="ctable">
+                <thead>
+                  <tr>
+                    <th>Vendor</th>
+                    <th>Mode</th>
+                    <th>Price</th>
+                    <th>Submitted</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hasParams && sortedPrices.length === 0 && (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: "center", padding: "24px", color: "var(--muted)", fontSize: "0.85rem" }}>
+                        No vendor prices for this combination yet.
+                      </td>
+                    </tr>
+                  )}
+
+                  {hasParams &&
+                    sortedPrices.map((r, i) => {
+                      const ac = AVATAR_COLORS[i % AVATAR_COLORS.length];
+                      return (
+                        <tr key={i}>
+                          <td>
+                            <div className="vc">
+                              <div className="vav" style={{ background: ac.bg, color: ac.color }}>
+                                {getInitials(r.vendor_name)}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: "0.84rem", color: "var(--ink)" }}>
+                                  {r.vendor_name}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span
+                              className={`tag ${r.pricing_mode === "additive" ? "tag-active" : "tag-draft"}`}
+                            >
+                              {r.pricing_mode}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`price-big${r.price === bestPrice ? " price-best" : ""}`}>
+                              ${Number(r.price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
+                            {new Date(r.submitted_at).toLocaleDateString()}
+                          </td>
+                          <td>
+                            <button className="selbtn" onClick={() => showToast(`Selected ${r.vendor_name}`)}>
+                              Select
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {sortedPrices.map((r, i) => (
-                          <tr key={i}
-                            style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
-                            onMouseOver={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'var(--gold-bg)'; }}
-                            onMouseOut={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
-                          >
-                            <td className="py-3 px-3" style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--ink)' }}>{r.vendor_name}</td>
-                            <td className="py-3 px-3" style={{
-                              fontFamily: "'Bricolage Grotesque', sans-serif",
-                              fontWeight: 700,
-                              fontSize: '0.95rem',
-                              color: r.price === bestPrice ? 'var(--green)' : 'var(--ink)',
-                            }}>
-                              ${Number(r.price).toFixed(2)}
-                            </td>
-                            <td className="py-3 px-3">
-                              <span className="text-xs font-bold px-2 py-0.5" style={{
-                                background: r.pricing_mode === "additive" ? 'var(--gold-bg)' : 'var(--blue-bg)',
-                                color: r.pricing_mode === "additive" ? 'var(--gold)' : 'var(--blue)',
-                                border: `1px solid ${r.pricing_mode === "additive" ? 'var(--gold-b)' : 'var(--blue-b)'}`,
-                                borderRadius: '100px',
-                              }}>
-                                {r.pricing_mode}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 text-sm" style={{ color: 'var(--muted)' }}>{new Date(r.submitted_at).toLocaleDateString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-sm" style={{ color: 'var(--faint)' }}>No vendor prices for this combination yet.</p>
-                )}
-              </>
-            )}
+                      );
+                    })}
 
-            {(!bid.parameters || bid.parameters.length === 0) && (
-              <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                {bid.vendor_responses?.length > 0
-                  ? `${bid.vendor_responses.length} vendor(s) responded.`
-                  : "No vendor responses yet."}
-              </p>
+                  {!hasParams &&
+                    bid.vendor_responses &&
+                    bid.vendor_responses.map((vr, i) => {
+                      const ac = AVATAR_COLORS[i % AVATAR_COLORS.length];
+                      return (
+                        <tr key={i}>
+                          <td>
+                            <div className="vc">
+                              <div className="vav" style={{ background: ac.bg, color: ac.color }}>
+                                {getInitials(vr.vendor_name)}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: "0.84rem", color: "var(--ink)" }}>
+                                  {vr.vendor_name}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`tag ${vr.pricing_mode === "additive" ? "tag-active" : "tag-draft"}`}>
+                              {vr.pricing_mode}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="price-big">
+                              {vr.base_price !== null ? `$${Number(vr.base_price).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "\u2014"}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
+                            {new Date(vr.submitted_at).toLocaleDateString()}
+                          </td>
+                          <td>
+                            <button className="selbtn" onClick={() => showToast(`Selected ${vr.vendor_name}`)}>
+                              Select
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                  {!hasParams && (!bid.vendor_responses || bid.vendor_responses.length === 0) && (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: "center", padding: "24px", color: "var(--muted)", fontSize: "0.85rem" }}>
+                        No vendor responses yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             )}
           </div>
         </div>
+
+        {/* Filter aside */}
+        <div className="compare-aside">
+          <div className="fa-title">{"\uD83D\uDD0D"} Filter Bids</div>
+          <div className="fa-group">
+            <div className="fa-lbl">Pricing Mode</div>
+            <label className="fa-opt">
+              <input type="checkbox" defaultChecked /> Combination
+            </label>
+            <label className="fa-opt">
+              <input type="checkbox" defaultChecked /> Additive
+            </label>
+          </div>
+          <div className="fa-group">
+            <div className="fa-lbl">Price Range</div>
+            <div className="fa-range">
+              <input type="range" min="0" max="100000" defaultValue="50000" />
+              <div className="fa-range-lbls">
+                <span>$0</span>
+                <span>$50K+</span>
+              </div>
+            </div>
+          </div>
+          <div className="fa-group">
+            <div className="fa-lbl">Date Submitted</div>
+            <label className="fa-opt">
+              <input type="checkbox" defaultChecked /> Last 7 days
+            </label>
+            <label className="fa-opt">
+              <input type="checkbox" /> Last 30 days
+            </label>
+            <label className="fa-opt">
+              <input type="checkbox" /> Any
+            </label>
+          </div>
+          <button className="btn btn-gold" style={{ width: "100%", justifyContent: "center", marginBottom: "6px" }} onClick={() => showToast("Filters applied")}>
+            Apply
+          </button>
+          <button className="btn btn-outline" style={{ width: "100%", justifyContent: "center" }} onClick={() => showToast("Filters reset")}>
+            Reset
+          </button>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

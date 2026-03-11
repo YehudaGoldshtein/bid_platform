@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string; fileId: string }> }
 ) {
   try {
-    await dbReady;
+    await dbReady();
 
     const { id, fileId } = await params;
 
