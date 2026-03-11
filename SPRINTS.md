@@ -163,17 +163,70 @@ trade_categories 1──∞ vendors (trade_category FK)
 
 ---
 
-## Sprint 3 — Winner Selection + Email
+## Sprint 3 — Winner Selection + Email + Export
 
-Closes the bid lifecycle loop
+Closes the bid lifecycle loop — from invite to award.
 
-| Task | Why |
-|---|---|
-| Select winner on comparison page | Button exists but is void |
-| Email service (Resend/SendGrid) | Unblocks all notifications |
-| Bid invitation emails with unique vendor links | Core flow |
-| Winner/loser notification emails | SRS Critical |
-| Auto-reminders before deadline | SRS Critical |
+### Phase 1 — DB & Winner Logic
+
+| # | Task | Details | Files |
+|---|---|---|---|
+| 1 | `bid_winners` table | id, bid_id FK (unique), vendor_id FK, vendor_response_id FK, selected_at, notes | `src/lib/db.ts` |
+| 2 | Winner selection API | POST `/api/bids/[id]/winner` — set winner, update bid status to `awarded`, create `bid_winners` row. GET to retrieve current winner | `src/app/api/bids/[id]/winner/route.ts` |
+| 3 | Finalize bid API | POST `/api/bids/[id]/finalize` — lock bid (status → `awarded`), prevent further submissions, expire pending invitations | `src/app/api/bids/[id]/finalize/route.ts` |
+| 4 | CSV export API | GET `/api/bids/[id]/export` — generate CSV with all vendor responses, prices per combination, parameters | `src/app/api/bids/[id]/export/route.ts` |
+
+### Phase 2 — Email Service
+
+| # | Task | Details | Files |
+|---|---|---|---|
+| 5 | Install Resend SDK | `npm install resend`. Add `RESEND_API_KEY` env var | `package.json`, `.env.local` |
+| 6 | Email helper module | Shared `sendEmail(to, subject, html)` wrapper around Resend. HTML templates for each email type | `src/lib/email.ts` |
+| 7 | Invitation email | When inviting vendors (POST `/api/bids/[id]/invite`), send email with unique link, bid title, deadline | `src/app/api/bids/[id]/invite/route.ts`, `src/lib/email.ts` |
+| 8 | Winner notification email | On winner selection: congratulations email to winner with bid details and next steps | `src/app/api/bids/[id]/winner/route.ts`, `src/lib/email.ts` |
+| 9 | Loser notification email | On winner selection: "not selected" email to all other invited vendors (customizable message) | `src/app/api/bids/[id]/winner/route.ts`, `src/lib/email.ts` |
+| 10 | Deadline reminder API | POST `/api/cron/reminders` — find bids with deadlines in 5 days or 2 days, email pending/opened vendors. Guard against duplicate sends | `src/app/api/cron/reminders/route.ts` |
+| 11 | `reminder_log` table | id, bid_invitation_id, reminder_type (first/second), sent_at — prevents duplicate reminder emails | `src/lib/db.ts` |
+
+### Phase 3 — Customer UI
+
+| # | Task | Details | Files |
+|---|---|---|---|
+| 12 | Wire "Select" button | On comparison table: clicking Select calls POST `/api/bids/[id]/winner` with vendor data, shows confirmation dialog | `src/app/customer/[id]/page.tsx` |
+| 13 | Winner badge display | After award: show winner badge on comparison row, lock editing, show "Awarded" status | `src/app/customer/[id]/page.tsx` |
+| 14 | Wire "Finalize" button | Calls finalize endpoint, expires pending invitations, locks bid | `src/app/customer/[id]/page.tsx` |
+| 15 | Wire "Export CSV" button | Calls GET `/api/bids/[id]/export`, triggers browser download | `src/app/customer/[id]/page.tsx` |
+| 16 | Email sent indicators | On invitation table: show email-sent icon, resend button for failed deliveries | `src/app/customer/[id]/page.tsx` |
+
+### Phase 4 — Tests
+
+| # | Task | Details | Files |
+|---|---|---|---|
+| 17 | Winner selection tests | Select winner, bid auto-awarded, reject duplicate winner, reject on draft bid | `tests/system/winner-selection.test.ts` |
+| 18 | Finalize tests | Lock bid, expire invitations, reject submissions after finalize | `tests/system/bid-finalize.test.ts` |
+| 19 | CSV export tests | Export with combinations, empty bids, multi-vendor multi-param | `tests/system/csv-export.test.ts` |
+| 20 | Reminder logic tests | Find bids needing reminders, skip already-sent, skip past-deadline | `tests/system/reminders.test.ts` |
+
+### Email Templates
+
+| Email | Trigger | Recipient | Content |
+|---|---|---|---|
+| Bid Invitation | Vendor invited | Vendor email | Bid title, description, deadline, unique submit link |
+| Deadline Reminder (5d) | Cron, 5 days before | Pending/opened vendors | "Deadline approaching" + submit link |
+| Deadline Reminder (2d) | Cron, 2 days before | Pending/opened vendors | "Last chance" + submit link |
+| Winner Notification | Winner selected | Winning vendor | Congratulations, bid summary, next steps |
+| Not Selected | Winner selected | All other vendors | Thank you, bid closed, not selected this time |
+
+### Definition of Done
+
+- [ ] All 4 new test files pass
+- [ ] Contractor can select winner from comparison table → bid auto-awards
+- [ ] Winner/loser emails sent on selection (via Resend)
+- [ ] Invitation emails sent when inviting vendors
+- [ ] Export CSV downloads full comparison spreadsheet
+- [ ] Finalize locks bid and expires pending invitations
+- [ ] Reminder cron endpoint works (manually triggerable, Vercel cron-ready)
+- [ ] Vercel deployment works end-to-end
 
 ---
 
