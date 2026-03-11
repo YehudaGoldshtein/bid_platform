@@ -100,6 +100,20 @@ async function initializeDatabase() {
       combination_key TEXT NOT NULL,
       price REAL NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS bid_winners (
+      id TEXT PRIMARY KEY,
+      bid_id TEXT NOT NULL UNIQUE REFERENCES bids(id) ON DELETE CASCADE,
+      vendor_id TEXT NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+      vendor_response_id TEXT NOT NULL REFERENCES vendor_responses(id) ON DELETE CASCADE,
+      notes TEXT,
+      selected_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS reminder_log (
+      id TEXT PRIMARY KEY,
+      bid_invitation_id TEXT NOT NULL REFERENCES bid_invitations(id) ON DELETE CASCADE,
+      reminder_type TEXT NOT NULL,
+      sent_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
   ];
 
   // Run each CREATE TABLE individually to avoid batch failures on existing schemas

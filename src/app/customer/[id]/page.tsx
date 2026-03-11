@@ -108,6 +108,9 @@ export default function CustomerBidDetailPage() {
   const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([]);
   const [showInvitePanel, setShowInvitePanel] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [winner, setWinner] = useState<{ vendor_id: string; vendor_name: string } | null>(null);
+  const [selectingWinner, setSelectingWinner] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   useEffect(() => {
     fetch(`/api/bids/${id}`)
@@ -132,6 +135,11 @@ export default function CustomerBidDetailPage() {
 
     // Fetch available vendors
     fetch("/api/vendors").then(r => r.json()).then(setAvailableVendors).catch(() => {});
+
+    // Fetch winner
+    fetch(`/api/bids/${id}/winner`).then(r => r.json()).then(data => {
+      if (data.winner) setWinner({ vendor_id: data.winner.vendor_id, vendor_name: data.winner.vendor_name });
+    }).catch(() => {});
   }, [id]);
 
   const allSelected =
@@ -313,6 +321,67 @@ export default function CustomerBidDetailPage() {
     navigator.clipboard.writeText(url).then(() => showToast("Link copied")).catch(() => showToast("Copy failed"));
   };
 
+  const handleSelectWinner = async (vendorName: string, vendorResponseIdx: number) => {
+    if (!bid?.vendor_responses) return;
+    const vr = bid.vendor_responses[vendorResponseIdx];
+    if (!vr) return;
+    if (!window.confirm(`Select ${vendorName} as the winner for this bid?`)) return;
+    setSelectingWinner(true);
+    try {
+      // Find the vendor_response server-side — we need to fetch it
+      const bidData = await fetch(`/api/bids/${id}`).then(r => r.json());
+      const serverVr = bidData.vendor_responses?.find((r: any) => r.vendor_name === vendorName);
+      if (!serverVr) { showToast("Could not find vendor response"); return; }
+
+      const res = await fetch(`/api/bids/${id}/winner`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vendor_id: serverVr.vendor_id, vendor_response_id: serverVr.id }),
+      });
+      if (res.ok) {
+        showToast(`${vendorName} selected as winner!`);
+        setWinner({ vendor_id: serverVr.vendor_id, vendor_name: vendorName });
+        setBidStatus("awarded");
+      } else {
+        const data = await res.json();
+        showToast(data.error || "Failed to select winner");
+      }
+    } catch { showToast("Failed to select winner"); }
+    finally { setSelectingWinner(false); }
+  };
+
+  const handleFinalize = async () => {
+    if (!window.confirm("Finalize this bid? This will lock the bid and expire pending invitations.")) return;
+    setFinalizing(true);
+    try {
+      const res = await fetch(`/api/bids/${id}/finalize`, { method: "POST" });
+      if (res.ok) {
+        showToast("Bid finalized");
+        setBidStatus("awarded");
+        fetch(`/api/bids/${id}/invite`).then(r => r.json()).then(setInvitations).catch(() => {});
+      } else {
+        const data = await res.json();
+        showToast(data.error || "Failed to finalize");
+      }
+    } catch { showToast("Failed to finalize"); }
+    finally { setFinalizing(false); }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      const res = await fetch(`/api/bids/${id}/export`);
+      if (!res.ok) { showToast("Export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${bid?.title || "bid"}_export.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("CSV downloaded");
+    } catch { showToast("Export failed"); }
+  };
+
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this bid? This action cannot be undone.")) return;
     setDeleting(true);
@@ -362,14 +431,14 @@ export default function CustomerBidDetailPage() {
             <option>Sort: Name</option>
             <option>Sort: Date</option>
           </select>
-          <button className="btn btn-outline btn-xs" onClick={() => showToast("Export coming soon")}>
+          <button className="btn btn-outline btn-xs" onClick={handleExportCSV}>
             {"\uD83D\uDCE4"} Export CSV
           </button>
           <button className="btn btn-gold btn-xs" onClick={() => setShowInvitePanel(true)}>
             Invite Vendors
           </button>
-          <button className="btn btn-gold btn-xs" onClick={() => showToast("Finalize coming soon")}>
-            Finalize {"\u2192"}
+          <button className="btn btn-gold btn-xs" onClick={handleFinalize} disabled={finalizing || bidStatus === "awarded"}>
+            {finalizing ? "Finalizing..." : bidStatus === "awarded" ? "Finalized" : "Finalize \u2192"}
           </button>
           <button
             className="btn btn-outline btn-xs"
@@ -508,9 +577,13 @@ export default function CustomerBidDetailPage() {
                             {new Date(r.submitted_at).toLocaleDateString()}
                           </td>
                           <td>
-                            <button className="selbtn" onClick={() => showToast(`Selected ${r.vendor_name}`)}>
-                              Select
-                            </button>
+                            {winner?.vendor_name === r.vendor_name ? (
+                              <span className="tag tag-active">Winner</span>
+                            ) : (
+                              <button className="selbtn" onClick={() => handleSelectWinner(r.vendor_name, i)} disabled={selectingWinner || !!winner}>
+                                {selectingWinner ? "..." : "Select"}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -548,9 +621,13 @@ export default function CustomerBidDetailPage() {
                             {new Date(vr.submitted_at).toLocaleDateString()}
                           </td>
                           <td>
-                            <button className="selbtn" onClick={() => showToast(`Selected ${vr.vendor_name}`)}>
-                              Select
-                            </button>
+                            {winner?.vendor_name === vr.vendor_name ? (
+                              <span className="tag tag-active">Winner</span>
+                            ) : (
+                              <button className="selbtn" onClick={() => handleSelectWinner(vr.vendor_name, i)} disabled={selectingWinner || !!winner}>
+                                {selectingWinner ? "..." : "Select"}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );

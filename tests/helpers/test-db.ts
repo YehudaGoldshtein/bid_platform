@@ -96,6 +96,22 @@ export function getTestDb() {
       combination_key TEXT NOT NULL,
       price REAL NOT NULL
     );
+
+    CREATE TABLE bid_winners (
+      id TEXT PRIMARY KEY,
+      bid_id TEXT NOT NULL UNIQUE REFERENCES bids(id) ON DELETE CASCADE,
+      vendor_id TEXT NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+      vendor_response_id TEXT NOT NULL REFERENCES vendor_responses(id) ON DELETE CASCADE,
+      notes TEXT,
+      selected_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE reminder_log (
+      id TEXT PRIMARY KEY,
+      bid_invitation_id TEXT NOT NULL REFERENCES bid_invitations(id) ON DELETE CASCADE,
+      reminder_type TEXT NOT NULL,
+      sent_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   return db;
@@ -223,6 +239,35 @@ export function seedBidInvitation(db: Database.Database, bidId: string, vendorId
   db.prepare('INSERT INTO bid_invitations (id, bid_id, vendor_id, token, status, opened_at, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(id, bidId, vendorId, token, overrides.status || 'pending', overrides.opened_at || null, overrides.submitted_at || null);
   return { id, token };
+}
+
+export function seedVendorResponse(db: Database.Database, bidId: string, vendorId: string, overrides: Partial<{
+  id: string;
+  vendorName: string;
+  prices: { combination_key: string; price: number }[];
+}> = {}) {
+  const responseId = overrides.id || crypto.randomUUID();
+  const vendorName = overrides.vendorName || 'Test Vendor';
+  db.prepare('INSERT INTO vendor_responses (id, bid_id, vendor_name, vendor_id, pricing_mode) VALUES (?, ?, ?, ?, ?)')
+    .run(responseId, bidId, vendorName, vendorId, 'combination');
+  const prices = overrides.prices || [
+    { combination_key: '{"Color":"Red","Size":"S"}', price: 100 },
+  ];
+  for (const p of prices) {
+    db.prepare('INSERT INTO vendor_prices (id, response_id, combination_key, price) VALUES (?, ?, ?, ?)')
+      .run(crypto.randomUUID(), responseId, p.combination_key, p.price);
+  }
+  return responseId;
+}
+
+export function seedBidWinner(db: Database.Database, bidId: string, vendorId: string, vendorResponseId: string, overrides: Partial<{
+  id: string;
+  notes: string;
+}> = {}) {
+  const id = overrides.id || crypto.randomUUID();
+  db.prepare('INSERT INTO bid_winners (id, bid_id, vendor_id, vendor_response_id, notes) VALUES (?, ?, ?, ?, ?)')
+    .run(id, bidId, vendorId, vendorResponseId, overrides.notes || null);
+  return id;
 }
 
 export function seedAdditiveResponse(db: Database.Database, bidId: string, overrides: Partial<{

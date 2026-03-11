@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db, dbReady } from '@/lib/db';
+import { sendEmail, bidInvitationEmail, getAppUrl } from '@/lib/email';
 
 export async function GET(
   request: Request,
@@ -77,6 +78,22 @@ export async function POST(
       });
 
       created.push({ vendor_id: vendorId, token });
+
+      // Send invitation email
+      const vendorData = await db().execute({ sql: 'SELECT name, email FROM vendors WHERE id = ?', args: [vendorId] });
+      if (vendorData.rows.length > 0) {
+        const v = vendorData.rows[0];
+        const bid = bidResult.rows[0];
+        const appUrl = getAppUrl();
+        const emailContent = bidInvitationEmail({
+          vendorName: v.name as string,
+          bidTitle: bid.title as string,
+          bidDescription: bid.description as string,
+          deadline: bid.deadline as string,
+          submitUrl: `${appUrl}/vendor-submit/${token}`,
+        });
+        await sendEmail({ to: v.email as string, ...emailContent });
+      }
     }
 
     return NextResponse.json({ created, errors }, { status: 201 });
