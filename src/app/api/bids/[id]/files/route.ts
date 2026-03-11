@@ -11,7 +11,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const bidResult = await db.execute({
+    const bidResult = await db().execute({
       sql: 'SELECT * FROM bids WHERE id = ?',
       args: [id],
     });
@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'Bid not found' }, { status: 404 });
     }
 
-    const filesResult = await db.execute({
+    const filesResult = await db().execute({
       sql: 'SELECT id, filename FROM bid_files WHERE bid_id = ?',
       args: [id],
     });
@@ -44,7 +44,7 @@ export async function POST(
 
     const { id } = await params;
 
-    const bidResult = await db.execute({
+    const bidResult = await db().execute({
       sql: 'SELECT * FROM bids WHERE id = ?',
       args: [id],
     });
@@ -83,7 +83,7 @@ export async function POST(
     }
 
     if (statements.length > 0) {
-      await db.batch(statements, 'write');
+      await db().batch(statements, 'write');
     }
 
     return NextResponse.json(fileEntries, { status: 201 });

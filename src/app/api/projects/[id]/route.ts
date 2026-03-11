@@ -10,7 +10,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const projectResult = await db.execute({
+    const projectResult = await db().execute({
       sql: 'SELECT * FROM projects WHERE id = ?',
       args: [id],
     });
@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    const bidsResult = await db.execute({
+    const bidsResult = await db().execute({
       sql: `SELECT b.*, (SELECT COUNT(*) FROM vendor_responses vr WHERE vr.bid_id = b.id) as vendor_response_count FROM bids b WHERE b.project_id = ? ORDER BY b.created_at DESC`,
       args: [id],
     });
@@ -68,7 +68,7 @@ export async function PATCH(
 
     args.push(id);
 
-    const result = await db.execute({
+    const result = await db().execute({
       sql: `UPDATE projects SET ${setClauses.join(', ')} WHERE id = ?`,
       args,
     });
@@ -77,7 +77,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    const updatedProject = await db.execute({
+    const updatedProject = await db().execute({
       sql: 'SELECT * FROM projects WHERE id = ?',
       args: [id],
     });
@@ -101,7 +101,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const projectResult = await db.execute({
+    const projectResult = await db().execute({
       sql: 'SELECT * FROM projects WHERE id = ?',
       args: [id],
     });
@@ -110,7 +110,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    await db.execute({
+    await db().execute({
       sql: 'DELETE FROM projects WHERE id = ?',
       args: [id],
     });

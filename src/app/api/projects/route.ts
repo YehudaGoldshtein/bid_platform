@@ -6,7 +6,7 @@ export async function GET() {
   try {
     await dbReady();
 
-    const result = await db.execute({
+    const result = await db().execute({
       sql: `SELECT p.*, (SELECT COUNT(*) FROM bids b WHERE b.project_id = p.id) as bid_count FROM projects p ORDER BY p.created_at DESC`,
       args: [],
     });
@@ -38,12 +38,12 @@ export async function POST(request: Request) {
 
     const id = crypto.randomUUID();
 
-    await db.execute({
+    await db().execute({
       sql: 'INSERT INTO projects (id, name, address, type, description, status) VALUES (?, ?, ?, ?, ?, ?)',
       args: [id, name, address || null, type || null, description || null, status || 'active'],
     });
 
-    const createdResult = await db.execute({
+    const createdResult = await db().execute({
       sql: 'SELECT * FROM projects WHERE id = ?',
       args: [id],
     });

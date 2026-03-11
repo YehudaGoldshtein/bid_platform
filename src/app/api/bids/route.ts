@@ -6,19 +6,19 @@ export async function GET() {
   try {
     await dbReady();
 
-    const bidsResult = await db.execute({ sql: 'SELECT * FROM bids', args: [] });
+    const bidsResult = await db().execute({ sql: 'SELECT * FROM bids', args: [] });
     const bids = bidsResult.rows;
 
     const result = await Promise.all(
       bids.map(async (bid) => {
-        const parametersResult = await db.execute({
+        const parametersResult = await db().execute({
           sql: 'SELECT * FROM bid_parameters WHERE bid_id = ?',
           args: [bid.id as string],
         });
 
         const parametersWithOptions = await Promise.all(
           parametersResult.rows.map(async (param) => {
-            const optionsResult = await db.execute({
+            const optionsResult = await db().execute({
               sql: 'SELECT value FROM bid_parameter_options WHERE parameter_id = ? ORDER BY sort_order',
               args: [param.id as string],
             });
@@ -29,7 +29,7 @@ export async function GET() {
           })
         );
 
-        const countResult = await db.execute({
+        const countResult = await db().execute({
           sql: 'SELECT COUNT(*) as count FROM vendor_responses WHERE bid_id = ?',
           args: [bid.id as string],
         });
@@ -95,9 +95,9 @@ export async function POST(request: Request) {
       }
     }
 
-    await db.batch(statements, 'write');
+    await db().batch(statements, 'write');
 
-    const createdBidResult = await db.execute({
+    const createdBidResult = await db().execute({
       sql: 'SELECT * FROM bids WHERE id = ?',
       args: [bidId],
     });

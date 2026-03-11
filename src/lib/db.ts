@@ -88,13 +88,9 @@ function ensureDbReady(): Promise<void> {
   return _dbReady;
 }
 
-// Lazy proxy: db is only created when first accessed at runtime, not at build time
-const db = new Proxy({} as Client, {
-  get(_target, prop) {
-    return getClient()[prop as keyof Client];
-  },
-});
-
+// Export getClient as db() — must be called as a function, not used as a value,
+// to avoid Proxy issues with private class members on Vercel's runtime.
+const db = getClient;
 const dbReady = ensureDbReady;
 
 export { db, dbReady };

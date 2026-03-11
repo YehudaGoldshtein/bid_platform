@@ -10,7 +10,7 @@ export async function GET(
 
     const { id, fileId } = await params;
 
-    const fileResult = await db.execute({
+    const fileResult = await db().execute({
       sql: 'SELECT * FROM bid_files WHERE id = ? AND bid_id = ?',
       args: [fileId, id],
     });

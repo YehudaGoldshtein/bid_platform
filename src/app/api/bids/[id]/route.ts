@@ -12,7 +12,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const bidResult = await db.execute({
+    const bidResult = await db().execute({
       sql: 'SELECT * FROM bids WHERE id = ?',
       args: [id],
     });
@@ -22,14 +22,14 @@ export async function GET(
       return NextResponse.json({ error: 'Bid not found' }, { status: 404 });
     }
 
-    const parametersResult = await db.execute({
+    const parametersResult = await db().execute({
       sql: 'SELECT * FROM bid_parameters WHERE bid_id = ?',
       args: [id],
     });
 
     const parametersWithOptions = await Promise.all(
       parametersResult.rows.map(async (param) => {
-        const optionsResult = await db.execute({
+        const optionsResult = await db().execute({
           sql: 'SELECT value FROM bid_parameter_options WHERE parameter_id = ? ORDER BY sort_order',
           args: [param.id as string],
         });
@@ -40,19 +40,19 @@ export async function GET(
       })
     );
 
-    const filesResult = await db.execute({
+    const filesResult = await db().execute({
       sql: 'SELECT id, filename FROM bid_files WHERE bid_id = ?',
       args: [id],
     });
 
-    const vendorResponsesResult = await db.execute({
+    const vendorResponsesResult = await db().execute({
       sql: 'SELECT * FROM vendor_responses WHERE bid_id = ?',
       args: [id],
     });
 
     const responsesWithPrices = await Promise.all(
       vendorResponsesResult.rows.map(async (response) => {
-        const pricesResult = await db.execute({
+        const pricesResult = await db().execute({
           sql: 'SELECT * FROM vendor_prices WHERE response_id = ?',
           args: [response.id as string],
         });
@@ -115,7 +115,7 @@ export async function PATCH(
 
     args.push(id);
 
-    const result = await db.execute({
+    const result = await db().execute({
       sql: `UPDATE bids SET ${setClauses.join(', ')} WHERE id = ?`,
       args,
     });
@@ -124,7 +124,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Bid not found' }, { status: 404 });
     }
 
-    const updatedBid = await db.execute({
+    const updatedBid = await db().execute({
       sql: 'SELECT * FROM bids WHERE id = ?',
       args: [id],
     });
@@ -148,7 +148,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const bidResult = await db.execute({
+    const bidResult = await db().execute({
       sql: 'SELECT * FROM bids WHERE id = ?',
       args: [id],
     });
@@ -157,7 +157,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Bid not found' }, { status: 404 });
     }
 
-    await db.execute({
+    await db().execute({
       sql: 'DELETE FROM bids WHERE id = ?',
       args: [id],
     });

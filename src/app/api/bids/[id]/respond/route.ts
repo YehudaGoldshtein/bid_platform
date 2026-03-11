@@ -11,7 +11,7 @@ export async function POST(
 
     const { id } = await params;
 
-    const bidResult = await db.execute({
+    const bidResult = await db().execute({
       sql: 'SELECT * FROM bids WHERE id = ?',
       args: [id],
     });
@@ -57,14 +57,14 @@ export async function POST(
       });
     }
 
-    await db.batch(statements, 'write');
+    await db().batch(statements, 'write');
 
-    const createdResponseResult = await db.execute({
+    const createdResponseResult = await db().execute({
       sql: 'SELECT * FROM vendor_responses WHERE id = ?',
       args: [responseId],
     });
 
-    const createdPricesResult = await db.execute({
+    const createdPricesResult = await db().execute({
       sql: 'SELECT * FROM vendor_prices WHERE response_id = ?',
       args: [responseId],
     });
