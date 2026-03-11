@@ -27,29 +27,31 @@ export default function VendorDashboard() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gray-50 py-10 px-4">
+    <main className="min-h-screen py-10 px-4" style={{ background: 'var(--bg)' }}>
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <Link href="/" className="text-sm text-indigo-500 hover:text-indigo-700 mb-1 inline-block">&larr; Back to Home</Link>
-          <h1 className="text-3xl font-bold text-gray-800">Vendor Dashboard</h1>
-          <p className="text-gray-500 mt-1">Browse available bids and submit your prices</p>
+          <Link href="/" className="text-sm mb-1 inline-block transition-colors" style={{ color: 'var(--gold)' }}>&larr; Back to Home</Link>
+          <h1 className="text-3xl font-bold" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Vendor Portal</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>Browse available bids and submit your prices</p>
         </div>
 
         {loading && (
           <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'var(--gold-b)', borderTopColor: 'var(--gold)' }}></div>
           </div>
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="px-4 py-3 text-sm" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-b)', borderRadius: '8px', color: 'var(--red)' }}>
             Error: {error}
           </div>
         )}
 
         {!loading && !error && bids.length === 0 && (
-          <div className="text-center py-20 text-gray-400">
-            <p className="text-lg">No bids available at the moment.</p>
+          <div className="text-center py-20" style={{ color: 'var(--muted)' }}>
+            <div className="text-3xl mb-3 opacity-50">📋</div>
+            <p className="font-semibold" style={{ color: 'var(--ink2)' }}>No bids available at the moment.</p>
+            <p className="text-sm mt-1">Check back later for new bid requests.</p>
           </div>
         )}
 
@@ -59,12 +61,17 @@ export default function VendorDashboard() {
               <Link
                 key={bid.id}
                 href={`/vendor/${bid.id}`}
-                className="block bg-white rounded-xl shadow hover:shadow-md transition-shadow p-6 border border-gray-200 hover:border-indigo-300"
+                className="block p-5 transition-all hover:-translate-y-0.5"
+                style={{ background: 'var(--card)', border: '1.5px solid var(--border)', borderRadius: '12px' }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--gold-b)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.07)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
-                <h2 className="text-lg font-semibold text-gray-800">{bid.title}</h2>
-                <p className="text-gray-500 text-sm mt-1 line-clamp-3">{bid.description}</p>
-                <div className="mt-3 text-xs text-gray-400">
-                  Deadline: {new Date(bid.deadline).toLocaleDateString()}
+                <h2 className="font-bold" style={{ fontSize: '0.95rem', color: 'var(--ink)', fontFamily: "'Bricolage Grotesque', sans-serif" }}>{bid.title}</h2>
+                <p className="text-sm mt-1 line-clamp-3" style={{ color: 'var(--muted)' }}>{bid.description}</p>
+                <div className="mt-3 flex items-center gap-3">
+                  <span className="text-xs font-bold px-2 py-0.5" style={{ background: 'var(--gold-bg)', color: 'var(--gold)', border: '1px solid var(--gold-b)', borderRadius: '100px' }}>
+                    Deadline: {new Date(bid.deadline).toLocaleDateString()}
+                  </span>
                 </div>
               </Link>
             ))}

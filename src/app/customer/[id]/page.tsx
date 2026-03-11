@@ -87,16 +87,13 @@ export default function CustomerBidDetailPage() {
       )
     : null;
 
-  // Flatten vendor_responses to find matching prices (both modes)
   const matchingPrices: MatchedPrice[] = [];
   if (allSelected && bid?.vendor_responses) {
     for (const vr of bid.vendor_responses) {
       if (vr.pricing_mode === "additive") {
-        // Additive: base_price + sum of matching option additions - discounts
         let total = vr.base_price ?? 0;
         let allFound = true;
 
-        // Build a map of option additions for discount calculations
         const optionAdditions: Record<string, number> = {};
         for (const [paramName, optionValue] of Object.entries(selections)) {
           const key = JSON.stringify({ param: paramName, option: optionValue });
@@ -109,21 +106,17 @@ export default function CustomerBidDetailPage() {
           }
         }
 
-        // Apply discount rules
         if (allFound && vr.rules && vr.rules.length > 0) {
           for (const rule of vr.rules) {
-            // Check if condition is met
             if (selections[rule.conditionParam] !== rule.conditionOption) continue;
 
             if (rule.targetType === "total") {
-              // Discount on total
               if (rule.discountType === "percentage") {
                 total -= total * (rule.discountValue / 100);
               } else {
                 total -= rule.discountValue;
               }
             } else if (rule.targetType === "param_option") {
-              // Discount on a specific option's addition
               if (selections[rule.targetParam] === rule.targetOption) {
                 const targetKey = JSON.stringify({ param: rule.targetParam, option: rule.targetOption });
                 const addition = optionAdditions[targetKey] ?? 0;
@@ -146,7 +139,6 @@ export default function CustomerBidDetailPage() {
           });
         }
       } else {
-        // Combination: direct lookup
         const match = vr.prices.find((p) => p.combination_key === combinationKey);
         if (match) {
           matchingPrices.push({
@@ -160,124 +152,165 @@ export default function CustomerBidDetailPage() {
     }
   }
 
+  const inputStyle = {
+    background: 'var(--bg)',
+    border: '1.5px solid var(--border)',
+    borderRadius: '7px',
+    padding: '9px 11px',
+    color: 'var(--ink)',
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+    fontSize: '0.84rem',
+    outline: 'none',
+    width: '100%',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+  };
+
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      <main className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'var(--gold-b)', borderTopColor: 'var(--gold)' }}></div>
       </main>
     );
   }
 
   if (error || !bid) {
     return (
-      <main className="min-h-screen bg-gray-50 py-10 px-4">
+      <main className="min-h-screen py-10 px-4" style={{ background: 'var(--bg)' }}>
         <div className="max-w-4xl mx-auto">
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="px-4 py-3 text-sm" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-b)', borderRadius: '8px', color: 'var(--red)' }}>
             {error || "Bid not found"}
           </div>
-          <Link href="/customer" className="text-sm text-indigo-500 hover:text-indigo-700 mt-4 inline-block">&larr; Back to Dashboard</Link>
+          <Link href="/customer" className="text-sm mt-4 inline-block" style={{ color: 'var(--gold)' }}>&larr; Back to Dashboard</Link>
         </div>
       </main>
     );
   }
 
+  const sortedPrices = [...matchingPrices].sort((a, b) => a.price - b.price);
+  const bestPrice = sortedPrices.length > 0 ? sortedPrices[0].price : null;
+
   return (
-    <main className="min-h-screen bg-gray-50 py-10 px-4">
+    <main className="min-h-screen py-10 px-4" style={{ background: 'var(--bg)' }}>
       <div className="max-w-4xl mx-auto">
-        <Link href="/customer" className="text-sm text-indigo-500 hover:text-indigo-700 mb-4 inline-block">&larr; Back to Dashboard</Link>
+        <Link href="/customer" className="text-sm mb-4 inline-block transition-colors" style={{ color: 'var(--gold)' }}>&larr; Back to Dashboard</Link>
 
         {/* Bid Info */}
-        <div className="bg-white rounded-xl shadow p-6 border border-gray-200 mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">{bid.title}</h1>
-          <p className="text-gray-500 mt-2">{bid.description}</p>
-          <p className="text-sm text-gray-400 mt-2">Deadline: {new Date(bid.deadline).toLocaleDateString()}</p>
-          <p className="text-sm text-gray-400 mt-1">{bid.vendor_responses?.length || 0} vendor response(s)</p>
+        <div className="mb-6 overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+          <div className="p-5">
+            <h1 className="text-xl font-bold" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>{bid.title}</h1>
+            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>{bid.description}</p>
+            <div className="flex gap-4 mt-3">
+              <span className="text-xs" style={{ color: 'var(--faint)' }}>Deadline: {new Date(bid.deadline).toLocaleDateString()}</span>
+              <span className="text-xs font-bold px-2 py-0.5" style={{ background: 'var(--gold-bg)', color: 'var(--gold)', border: '1px solid var(--gold-b)', borderRadius: '100px' }}>
+                {bid.vendor_responses?.length || 0} response{(bid.vendor_responses?.length || 0) !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Parameter Selection */}
         {bid.parameters && bid.parameters.length > 0 && (
-          <div className="bg-white rounded-xl shadow p-6 border border-gray-200 mb-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Select Parameters</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {bid.parameters.map((param) => (
-                <div key={param.name}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{param.name}</label>
-                  <select
-                    value={selections[param.name] || ""}
-                    onChange={(e) =>
-                      setSelections({ ...selections, [param.name]: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-                  >
-                    <option value="">-- Select {param.name} --</option>
-                    {param.options.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+          <div className="mb-6 overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+            <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
+              <h2 className="font-bold text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Select Parameters</h2>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {bid.parameters.map((param) => (
+                  <div key={param.name}>
+                    <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--ink2)' }}>{param.name}</label>
+                    <select
+                      value={selections[param.name] || ""}
+                      onChange={(e) =>
+                        setSelections({ ...selections, [param.name]: e.target.value })
+                      }
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--gold-bg)'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.boxShadow = 'none'; }}
+                    >
+                      <option value="">-- Select {param.name} --</option>
+                      {param.options.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
         {/* Price Table */}
-        <div className="bg-white rounded-xl shadow p-6 border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Vendor Prices</h2>
+        <div className="overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+          <div className="flex items-center gap-2 px-5 py-3" style={{ background: 'var(--card2)', borderBottom: '1px solid var(--border)' }}>
+            <h2 className="font-bold text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", color: 'var(--ink)' }}>Vendor Prices</h2>
+          </div>
+          <div className="p-5">
+            {!allSelected && bid.parameters && bid.parameters.length > 0 && (
+              <p className="text-sm" style={{ color: 'var(--faint)' }}>Please select all parameters above to view vendor prices.</p>
+            )}
 
-          {!allSelected && bid.parameters && bid.parameters.length > 0 && (
-            <p className="text-gray-400 text-sm">Please select all parameters above to view vendor prices.</p>
-          )}
-
-          {allSelected && (
-            <>
-              {matchingPrices.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-2 font-medium text-gray-600">Vendor Name</th>
-                        <th className="text-left py-3 px-2 font-medium text-gray-600">Price</th>
-                        <th className="text-left py-3 px-2 font-medium text-gray-600">Mode</th>
-                        <th className="text-left py-3 px-2 font-medium text-gray-600">Submitted</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {matchingPrices
-                        .sort((a, b) => a.price - b.price)
-                        .map((r, i) => (
-                          <tr key={i} className="border-b border-gray-100">
-                            <td className="py-3 px-2 text-gray-800">{r.vendor_name}</td>
-                            <td className="py-3 px-2 text-gray-800 font-medium">${Number(r.price).toFixed(2)}</td>
-                            <td className="py-3 px-2">
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                r.pricing_mode === "additive"
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-blue-100 text-blue-700"
-                              }`}>
+            {allSelected && (
+              <>
+                {sortedPrices.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                          <th className="text-left py-2.5 px-3" style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>Vendor</th>
+                          <th className="text-left py-2.5 px-3" style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>Price</th>
+                          <th className="text-left py-2.5 px-3" style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>Mode</th>
+                          <th className="text-left py-2.5 px-3" style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>Submitted</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedPrices.map((r, i) => (
+                          <tr key={i}
+                            style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                            onMouseOver={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'var(--gold-bg)'; }}
+                            onMouseOut={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
+                          >
+                            <td className="py-3 px-3" style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--ink)' }}>{r.vendor_name}</td>
+                            <td className="py-3 px-3" style={{
+                              fontFamily: "'Bricolage Grotesque', sans-serif",
+                              fontWeight: 700,
+                              fontSize: '0.95rem',
+                              color: r.price === bestPrice ? 'var(--green)' : 'var(--ink)',
+                            }}>
+                              ${Number(r.price).toFixed(2)}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="text-xs font-bold px-2 py-0.5" style={{
+                                background: r.pricing_mode === "additive" ? 'var(--gold-bg)' : 'var(--blue-bg)',
+                                color: r.pricing_mode === "additive" ? 'var(--gold)' : 'var(--blue)',
+                                border: `1px solid ${r.pricing_mode === "additive" ? 'var(--gold-b)' : 'var(--blue-b)'}`,
+                                borderRadius: '100px',
+                              }}>
                                 {r.pricing_mode}
                               </span>
                             </td>
-                            <td className="py-3 px-2 text-gray-400">{new Date(r.submitted_at).toLocaleDateString()}</td>
+                            <td className="py-3 px-3 text-sm" style={{ color: 'var(--muted)' }}>{new Date(r.submitted_at).toLocaleDateString()}</td>
                           </tr>
                         ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-gray-400 text-sm">No vendor prices for this combination yet.</p>
-              )}
-            </>
-          )}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm" style={{ color: 'var(--faint)' }}>No vendor prices for this combination yet.</p>
+                )}
+              </>
+            )}
 
-          {(!bid.parameters || bid.parameters.length === 0) && (
-            <p className="text-gray-400 text-sm">
-              {bid.vendor_responses?.length > 0
-                ? `${bid.vendor_responses.length} vendor(s) responded.`
-                : "No vendor responses yet."}
-            </p>
-          )}
+            {(!bid.parameters || bid.parameters.length === 0) && (
+              <p className="text-sm" style={{ color: 'var(--faint)' }}>
+                {bid.vendor_responses?.length > 0
+                  ? `${bid.vendor_responses.length} vendor(s) responded.`
+                  : "No vendor responses yet."}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </main>

@@ -1,1 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+:root {
+  --bg: #f0f2f7;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --card2: #f7f8fc;
+  --border: #e2e6f0;
+  --border2: #cdd2e0;
+  --ink: #111827;
+  --ink2: #374151;
+  --muted: #6b7280;
+  --faint: #9ca3af;
+  --gold: #e8920a;
+  --gold-l: #f5a823;
+  --gold-bg: #fff7ed;
+  --gold-b: #fde8c3;
+  --green: #16a34a;
+  --green-bg: #f0fdf4;
+  --green-b: #bbf7d0;
+  --blue: #2563eb;
+  --blue-bg: #eff6ff;
+  --blue-b: #bfdbfe;
+  --red: #dc2626;
+  --red-bg: #fef2f2;
+  --red-b: #fecaca;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
